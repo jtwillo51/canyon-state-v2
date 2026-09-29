@@ -10,7 +10,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, PlainSerializer
 
-from app.models import LineOfBusiness, PartnerType, ReferralStatus, ReferralStep
+from app.models import LineOfBusiness, PartnerType, ReferralStatus, ReferralStep, Role
 
 # Money is Numeric in the database and a JSON number on the wire (Pydantic's default is a string).
 Money = Annotated[Decimal, PlainSerializer(float, return_type=float)]
@@ -24,6 +24,14 @@ class Schema(BaseModel):
 class UserRef(Schema):
     id: uuid.UUID
     name: str
+
+
+class DevUserOut(Schema):
+    """A person the development "View as" switcher can act as."""
+
+    id: uuid.UUID
+    name: str
+    role: Role
 
 
 class CarrierRef(Schema):

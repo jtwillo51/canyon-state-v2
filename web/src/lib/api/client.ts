@@ -18,3 +18,8 @@ export function apiAs(viewerId: string) {
     headers: { "X-Dev-User": viewerId },
   });
 }
+
+/** A client with no viewer, for the development "View as" user list. */
+export function devApi() {
+  return createClient<paths>({ baseUrl: process.env.API_URL });
+}

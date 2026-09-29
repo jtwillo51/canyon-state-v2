@@ -38,6 +38,15 @@ async def test_dev_header_ignored_when_dev_auth_off(
     assert (await api.get("/partners", headers=as_user(world.dana))).status_code == 401
 
 
+async def test_dev_user_list_only_with_dev_auth(
+    api: httpx.AsyncClient, world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    names = [u["name"] for u in (await api.get("/dev/users")).json()]
+    assert names == ["Dana Admin", "Jordan Rep", "Tessa Rep"]  # admins first, then by name
+    monkeypatch.setattr(settings, "dev_auth", False)
+    assert (await api.get("/dev/users")).status_code == 404
+
+
 # --- Partners: shared -----------------------------------------------------------------------------
 
 

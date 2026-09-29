@@ -123,5 +123,24 @@ The running log of what was decided for Canyon State v2 and why. Newest section 
 - **The client is server-only** (`import "server-only"` in `web/src/lib/api/client.ts`): it holds `API_URL`
   and the dev viewer header, and importing it from a Client Component fails the build. `types.ts` gives the
   shapes friendly names (`Partner`, `Referral`) and is safe to import anywhere.
-- The Python `Literal` lists now reach the browser: one definition drives the CHECK constraint, API
+- The Python `Literal` lists now reach the browser (see below): one definition drives the CHECK constraint, API
   validation, the OpenAPI schema and the TypeScript unions.
+
+## Stage 1 pages (2026-09-29)
+
+- **"View as" is a cookie set by a Server Action** (`web/src/app/actions.ts`). Server Components read it
+  with `cookies()` and call the API as that user (`web/src/lib/viewer.ts`). The cookie is `httpOnly`, so
+  browser JavaScript can't read it; the API still decides what that user may see. Stage 3 swaps it for a
+  real session. The people come from a dev-only `GET /dev/users` (404 unless `DEV_AUTH` is on).
+- **UI: shadcn/ui on Tailwind.** Component source is copied into `web/src/components/ui/` and owned by the
+  repo. Its class-merging helper is shadcn's new `cn` npm package (verified: published by shadcn, source at
+  github.com/shadcn-ui/cn, no install scripts).
+- **Lists are plain server-rendered tables** with no client JavaScript; sorting, column picking and saved
+  views come with TanStack Table in Stage 2. The only Client Component is the "View as" select (it submits
+  on change).
+- **Routes:** `/partners`, `/partners/[id]` (details, "do not discuss", production, the viewer's referrals for
+  that partner), `/referrals`, `/referrals/[id]` (policy, client, step timeline). `/` redirects to
+  `/partners`. An API 404 (including someone else's referral) renders Next's not-found page.
+- **Dates from the API ("YYYY-MM-DD") are formatted from their parts**, never `new Date(string)`, which
+  reads them as UTC midnight and shows the previous day in Arizona.
+- **The browser never calls the API:** verified in the network log (no requests to :8000).
