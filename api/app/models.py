@@ -170,6 +170,8 @@ class Referral(Record, Base):
     # Numeric, never float: this is money.
     premium: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     bound_date: Mapped[date | None]
+    # When it was marked lost. NULL for referrals lost before this column existed.
+    lost_date: Mapped[date | None]
 
     partner: Mapped[Partner] = relationship(back_populates="referrals")
     carrier: Mapped[Carrier] = relationship()

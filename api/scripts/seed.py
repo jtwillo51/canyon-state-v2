@@ -153,8 +153,12 @@ def build() -> list[Base]:
             low, high = (2500, 9000) if lob == "Commercial" else (250, 600) if lob == "Umbrella" else (900, 3200)
             status = "bound" if bound else "lost" if lost else ("referred", "contacted", "quoted")[progress - 1]
 
+            referral_id = new_id()
+            # Lost 20-45 days after referral. Derived from the id rather than drawn from rng, so
+            # adding this field didn't shift the generator (and every id after it).
+            lost_date = min(referred + timedelta(days=20 + referral_id.int % 26), TODAY) if lost else None
             referral = Referral(
-                id=new_id(),
+                id=referral_id,
                 partner_id=p.id,
                 client_name=f"{pick(CLIENT_FIRST)} {pick(LAST)}",
                 client_address=f"{rng.randint(100, 4999)} {pick(STREETS)}, {pick(CITIES)}, AZ",
@@ -167,6 +171,7 @@ def build() -> list[Base]:
                 # NULL until quoted (see DECISIONS.md), rounded to $10.
                 premium=Decimal(round(rng.randint(low, high) / 10) * 10) if progress == 3 else None,
                 bound_date=bound_date,
+                lost_date=lost_date,
             )
             referrals.append(referral)
 

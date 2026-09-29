@@ -19,6 +19,11 @@ export function day(iso: string | null | undefined): string {
   return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+/** Today in Arizona as "YYYY-MM-DD" (the agency's today, whatever time zone the server runs in). */
+export function agencyToday(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Phoenix" }).format(new Date());
+}
+
 /** Blocked values come back as the literal string "blocked" (see the API's app/policy.py). */
 export function blockedOr<T>(value: T | "blocked", show: (v: T) => string): string {
   return value === "blocked" ? "Blocked" : show(value);

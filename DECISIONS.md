@@ -144,3 +144,48 @@ The running log of what was decided for Canyon State v2 and why. Newest section 
 - **Dates from the API ("YYYY-MM-DD") are formatted from their parts**, never `new Date(string)`, which
   reads them as UTC midnight and shows the previous day in Arizona.
 - **The browser never calls the API:** verified in the network log (no requests to :8000).
+
+## Pipeline (2026-09-29)
+
+v1 never moved a referral between statuses (status was set at creation), and "what counts as closed" is
+still open with the agency (FIELD_QUESTIONS #1). These rules are decided for the app and live in
+`api/app/pipeline.py`, tested in `api/tests/test_pipeline.py`:
+
+- **Moves:** forward one or more steps (referred → contacted → quoted → bound, skipping allowed); any open
+  referral can be marked lost. Moving backward, or reopening a bound or lost referral, is **admin-only**
+  because it rewrites credit.
+- **Credit:** every step passed on the way forward credits one rep: the person moving it, or, when an admin
+  moves it, a rep the admin must name (an admin can't credit an admin). Reps can only credit themselves.
+  Moving backward soft-deletes the credits for steps past the new status. Reopening a lost referral keeps
+  the credits it already had.
+- **Required data:** quoted needs a premium (an existing one counts); bound needs a premium and a bind date
+  between the referral date and today. Moving back below quoted clears the premium (NULL = not quoted).
+- **A refused move changes nothing:** `apply_move` validates everything before touching the referral; the
+  API answers 422 with `{message, field}` so the UI can point at the field.
+- **Concurrent moves:** the referral row is locked (`SELECT … FOR UPDATE`) for the length of the move.
+- **New column `referrals.lost_date`** (migration 2): the board needs "lost in the last 30 days", and
+  `updated_at` changes on any edit. Referrals lost before the column existed have none. The seed derives it
+  from each referral's id so the random generator (and every id) stayed stable.
+- **"Today" is the agency's today** (`America/Phoenix`, `app/clock.py`), not the server's: a UTC server is
+  already on tomorrow by 5 pm in Arizona.
+- **The board (`GET /referrals/pipeline`)** shows open referrals plus those bound or lost in the last 30
+  days, scoped like every referral query.
+
+## Pipeline board UI (2026-09-29)
+
+- **Writes go through Server Actions** (`web/src/app/pipeline/actions.ts`), which call the API as the
+  viewer through the same server-only client, then `refresh()` the page. The browser still never calls the
+  API. Server Actions are public endpoints, which is fine because they only forward to the API, which
+  enforces every rule.
+- **`useOptimistic`** moves the card the moment it's dropped; a refused move snaps back and shows the
+  API's own message.
+- **Drag and drop: `@dnd-kit/core` 6.3** (stable; the newer `@dnd-kit/react` is pre-1.0). Keyboard dragging
+  and screen-reader announcements (by client name) are on.
+- **The browser mirrors the rules only to decide what to ask** (`web/src/lib/pipeline.ts`): a dialog asks
+  for the premium (prefilled if known), the bind date (defaults to the agency's today), and, for an admin's
+  forward move, which rep did the work. The API stays the authority; a rep's backward drag goes straight to
+  it and comes back refused.
+- **New API endpoints:** `GET /users/me` (who the API thinks is asking; the board needs the role) and
+  `GET /users/reps` (the admin's rep picker; `/dev/users` can't be used because it disappears in production).
+- **React 19 resets a form after its action runs.** Remounting with a `key` tied to the viewer keeps the
+  "View as" select (and the board's leftover error state) in step with who is viewing.

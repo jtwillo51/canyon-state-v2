@@ -8,7 +8,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, PlainSerializer
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
 
 from app.models import LineOfBusiness, PartnerType, ReferralStatus, ReferralStep, Role
 
@@ -26,12 +26,16 @@ class UserRef(Schema):
     name: str
 
 
-class DevUserOut(Schema):
-    """A person the development "View as" switcher can act as."""
+class Me(Schema):
+    """The signed-in person."""
 
     id: uuid.UUID
     name: str
     role: Role
+
+
+class DevUserOut(Me):
+    """A person the development "View as" switcher can act as."""
 
 
 class CarrierRef(Schema):
@@ -86,4 +90,20 @@ class ReferralOut(Schema):
     status: ReferralStatus
     premium: Money | None  # null until quoted
     bound_date: date | None
+    lost_date: date | None
     steps: list[StepOut]
+
+
+class StatusChange(BaseModel):
+    """Move a referral on the pipeline. See app/pipeline.py for the rules."""
+
+    status: ReferralStatus
+    premium: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=2)
+    bound_date: date | None = None
+    # Admins name the rep who did the work; reps are always credited themselves.
+    credit_rep_id: uuid.UUID | None = None
+
+
+class PipelineErrorOut(BaseModel):
+    message: str
+    field: str | None

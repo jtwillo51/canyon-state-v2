@@ -47,6 +47,22 @@ async def test_dev_user_list_only_with_dev_auth(
     assert (await api.get("/dev/users")).status_code == 404
 
 
+async def test_me_is_the_viewer(api: httpx.AsyncClient, world: World) -> None:
+    assert (await api.get("/users/me")).status_code == 401
+    me = (await api.get("/users/me", headers=as_user(world.tessa))).json()
+    assert (me["name"], me["role"]) == ("Tessa Rep", "rep")
+
+
+async def test_rep_list_needs_a_viewer_and_lists_active_reps_only(
+    api: httpx.AsyncClient, db: AsyncSession, world: World
+) -> None:
+    assert (await api.get("/users/reps")).status_code == 401
+    world.jordan.active = False
+    await db.flush()
+    reps = (await api.get("/users/reps", headers=as_user(world.dana))).json()
+    assert [r["name"] for r in reps] == ["Tessa Rep"]
+
+
 # --- Partners: shared -----------------------------------------------------------------------------
 
 

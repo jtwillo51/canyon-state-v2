@@ -55,6 +55,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/referrals/pipeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pipeline Board
+         * @description Open referrals, plus those bound or lost in the last 30 days.
+         */
+        get: operations["pipeline_board_referrals_pipeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/referrals/{referral_id}": {
         parameters: {
             query?: never;
@@ -64,6 +84,66 @@ export interface paths {
         };
         /** Get Referral */
         get: operations["get_referral_referrals__referral_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/referrals/{referral_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Status
+         * @description Move a referral on the pipeline (see app/pipeline.py for the rules).
+         */
+        post: operations["change_status_referrals__referral_id__status_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Me
+         * @description Who the API thinks is asking.
+         */
+        get: operations["me_users_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/reps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Reps
+         * @description Active reps, e.g. for an admin choosing who gets credit for a pipeline move.
+         */
+        get: operations["list_reps_users_reps_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -143,6 +223,24 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * Me
+         * @description The signed-in person.
+         */
+        Me: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "rep";
+        };
         /** PartnerOut */
         PartnerOut: {
             /**
@@ -186,6 +284,13 @@ export interface components {
             name: string;
             /** Business Name */
             business_name: string;
+        };
+        /** PipelineErrorOut */
+        PipelineErrorOut: {
+            /** Message */
+            message: string;
+            /** Field */
+            field: string | null;
         };
         /** ProductionOut */
         ProductionOut: {
@@ -232,8 +337,27 @@ export interface components {
             premium: number | null;
             /** Bound Date */
             bound_date: string | null;
+            /** Lost Date */
+            lost_date: string | null;
             /** Steps */
             steps: components["schemas"]["StepOut"][];
+        };
+        /**
+         * StatusChange
+         * @description Move a referral on the pipeline. See app/pipeline.py for the rules.
+         */
+        StatusChange: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "referred" | "contacted" | "quoted" | "bound" | "lost";
+            /** Premium */
+            premium?: number | string | null;
+            /** Bound Date */
+            bound_date?: string | null;
+            /** Credit Rep Id */
+            credit_rep_id?: string | null;
         };
         /** StepOut */
         StepOut: {
@@ -378,6 +502,37 @@ export interface operations {
             };
         };
     };
+    pipeline_board_referrals_pipeline_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferralOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_referral_referrals__referral_id__get: {
         parameters: {
             query?: never;
@@ -398,6 +553,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReferralOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_status_referrals__referral_id__status_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path: {
+                referral_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StatusChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferralOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PipelineErrorOut"];
+                };
+            };
+        };
+    };
+    me_users_me_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_reps_users_reps_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRef"][];
                 };
             };
             /** @description Validation Error */

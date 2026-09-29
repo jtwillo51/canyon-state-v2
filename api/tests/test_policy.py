@@ -24,6 +24,7 @@ REFERRAL = ReferralOut(
     status="referred",
     premium=None,
     bound_date=None,
+    lost_date=None,
     steps=[],
 )
 

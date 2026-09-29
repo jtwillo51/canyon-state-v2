@@ -7,3 +7,6 @@ export type Partner = Schemas["PartnerOut"];
 export type Referral = Schemas["ReferralOut"];
 export type ReferralStatus = Referral["status"];
 export type Step = Schemas["StepOut"];
+export type Me = Schemas["Me"];
+export type UserRef = Schemas["UserRef"];
+export type StatusChange = Schemas["StatusChange"];
