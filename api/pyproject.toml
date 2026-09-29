@@ -1,0 +1,21 @@
+[project]
+name = "canyon-state-api"
+version = "0.1.0"
+description = "Canyon State v2 API: FastAPI + SQLAlchemy (async) + Postgres"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.20.0",
+    "asyncpg>=0.31.0",
+    "fastapi[standard]>=0.141.1",
+    "pydantic-settings>=2.15.0",
+    "sqlalchemy[asyncio]>=2.1.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
