@@ -110,4 +110,18 @@ The running log of what was decided for Canyon State v2 and why. Newest section 
 - **Hand-built fixtures, not the seed:** a tiny `World` (an admin, two reps, one partner, one referral
   each), so every test reads as a rule: "given this, Jordan gets a 404".
 - **Async tests use the anyio pytest plugin** (already installed with FastAPI), not pytest-asyncio.
-- **Tests are checked by breaking the code:** disabling referral scoping made the four scoping tests fail.
+- **Tests are checked by breaking the code (see below):** disabling referral scoping made the four scoping tests fail.
+
+## Typed client (2026-09-29)
+
+- **openapi-typescript + openapi-fetch.** One generated file of types (`web/src/lib/api/schema.d.ts`), no
+  generated runtime code; openapi-fetch (~6 kB) checks paths, params and responses against it. A typo'd
+  path, a missing path param, or using `premium` without handling `null` are compile errors.
+- **Generated from the running API:** `npm run gen:api` reads `http://localhost:8000/openapi.json`, so the
+  API must be up. **`schema.d.ts` is committed** so the web app builds without the API running (and on
+  Vercel). Regenerate after any API change.
+- **The client is server-only** (`import "server-only"` in `web/src/lib/api/client.ts`): it holds `API_URL`
+  and the dev viewer header, and importing it from a Client Component fails the build. `types.ts` gives the
+  shapes friendly names (`Partner`, `Referral`) and is safe to import anywhere.
+- The Python `Literal` lists now reach the browser: one definition drives the CHECK constraint, API
+  validation, the OpenAPI schema and the TypeScript unions.
