@@ -1,5 +1,6 @@
 from typing import Any
 
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL, make_url
 
@@ -19,6 +20,23 @@ class Settings(BaseSettings):
     # The public demo: the same header sign-in (a "View as" switcher), and the seed script may run
     # against this non-local database. SYNTHETIC DATA ONLY: never set this where real data lives.
     demo_mode: bool = False
+
+    # Background jobs (Inngest, app/jobs/). The endpoint Inngest calls exists only when one of these is set:
+    # - inngest_signing_key: production. Every request must be signed with this key.
+    # - inngest_dev: the local Inngest Dev Server, which doesn't sign requests. Local development only:
+    #   refused unless DEV_AUTH is on, so it can't be switched on for a deployed server.
+    inngest_signing_key: SecretStr | None = None
+    inngest_dev: bool = False
+
+    @model_validator(mode="after")
+    def _inngest_dev_is_local_only(self) -> "Settings":
+        if self.inngest_dev and not self.dev_auth:
+            raise ValueError("INNGEST_DEV skips request signing; it's allowed only with DEV_AUTH (local development)")
+        return self
+
+    @property
+    def jobs_enabled(self) -> bool:
+        return self.inngest_dev or self.inngest_signing_key is not None
 
     @property
     def header_auth(self) -> bool:

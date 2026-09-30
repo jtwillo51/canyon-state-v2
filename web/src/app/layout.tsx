@@ -3,9 +3,11 @@ import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import Link from "next/link";
 
 import { AppNav } from "@/components/app-nav";
+import { NotificationBell } from "@/components/notifications/bell";
 import { ProgressPrefsProvider } from "@/components/progress/prefs";
 import { ProgressStrip } from "@/components/progress/progress-strip";
 import { ViewAs } from "@/components/view-as";
+import { getNotifications } from "@/lib/notifications-server";
 import { getProgress, getProgressPrefs } from "@/lib/progress-server";
 
 import "./globals.css";
@@ -29,14 +31,14 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  // Every page shows the progress strip, so the layout loads it (once per request, in parallel).
-  const [progress, prefs] = await Promise.all([getProgress(), getProgressPrefs()]);
+  // Every page shows the progress strip and the bell, so the layout loads them (once per request, in parallel).
+  const [progress, prefs, notifications] = await Promise.all([getProgress(), getProgressPrefs(), getNotifications()]);
   return (
     <html lang="en" className={`${plexSans.variable} ${plexMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-background text-foreground">
         {/* The public demo: server-only env var, set on Vercel. */}
         {process.env.DEMO_MODE === "true" && (
-          <p className="bg-copper-wash px-4 py-1.5 text-center text-xs text-copper-ink">
+          <p className="bg-amber-50 px-4 py-1.5 text-center text-xs text-amber-950">
             <strong>Demo</strong> · every person, partner and client here is fictional · changes reset nightly · use{" "}
             <strong>View as</strong> to switch between an admin and a rep
           </p>
@@ -50,7 +52,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               Canyon State
             </Link>
             <AppNav />
-            <div className="ml-auto flex items-center py-2">
+            <div className="ml-auto flex items-center gap-3 py-2">
+              {notifications && <NotificationBell unread={notifications.unread} />}
               <ViewAs />
             </div>
           </div>

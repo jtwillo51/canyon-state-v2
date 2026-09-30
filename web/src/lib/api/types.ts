@@ -16,3 +16,7 @@ export type Metric = Schemas["Metric"];
 export type RepProgress = Schemas["RepProgress"];
 export type Activity = Schemas["ActivityOut"];
 export type ActivityIn = Schemas["ActivityIn"];
+export type NotificationPage = Schemas["NotificationPage"];
+export type Notification = Schemas["NotificationOut"];
+export type Digest = Schemas["DigestData"];
+export type WeekTally = Schemas["WeekTally"];

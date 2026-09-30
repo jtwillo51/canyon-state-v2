@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import app as app_package
 from app.clock import agency_today
 from app.main import app
-from app.models import SavedView, User
+from app.models import Notification, SavedView, User
 from tests.conftest import World, as_user
 
 pytestmark = pytest.mark.anyio
@@ -103,6 +103,13 @@ CASES = [
         "DELETE", "/views/{view_id}", {"nobody": 401, "owner": 204, "other_rep": 404, "admin": 404},
         "a view is private, even from admins",
     ),  # fmt: skip
+    # --- Notifications: private to their recipient, admins included ---------------------------------------
+    Case("GET", "/notifications", everyone(), "each person lists only their own (test_notifications)"),
+    Case("POST", "/notifications/read-all", everyone(204), "marks only the caller's own"),
+    Case(
+        "POST", "/notifications/{notification_id}/read", {"nobody": 401, "owner": 204, "other_rep": 404, "admin": 404},
+        "a notification is private, even from admins",
+    ),  # fmt: skip
 ]
 
 # Endpoints that deliberately need no sign-in, and why.
@@ -123,6 +130,11 @@ async def fill(path: str, world: World, db: AsyncSession) -> str:
         "referral_id": world.tessas_referral.id,
         "user_id": world.tessa.id,
     }
+    if "{notification_id}" in path:
+        note = Notification(user_id=world.tessa.id, kind="weekly_digest", dedupe_key="digest:2026-09-21")
+        db.add(note)
+        await db.flush()
+        ids["notification_id"] = note.id
     if "{view_id}" in path:
         view = SavedView(user_id=world.tessa.id, list="referrals", name="Tessa's quotes", query="status=quoted")
         db.add(view)
@@ -175,7 +187,14 @@ def test_every_endpoint_has_a_row() -> None:
     assert all(set(c.expect) == set(ACTORS) for c in CASES), "every row answers for all four people"
 
 
+# Endpoints deliberately left out of the schema, each reviewed, with where its security is tested instead.
+REVIEWED_HIDDEN = {
+    "jobs/endpoint.py": "Inngest's /api/inngest: exists only when configured, signed requests only (test_jobs.py)",
+}
+
+
 def test_no_endpoint_hides_from_the_schema() -> None:
     """The guard reads the schema, so an endpoint left out of it (include_in_schema=False) would escape."""
-    hidden = [p.name for p in Path(app_package.__file__).parent.rglob("*.py") if "include_in_schema" in p.read_text("utf-8")]
-    assert hidden == [], "an endpoint hidden from the schema can't be checked by the access matrix"
+    root = Path(app_package.__file__).parent
+    hidden = {p.relative_to(root).as_posix() for p in root.rglob("*.py") if "include_in_schema" in p.read_text("utf-8")}
+    assert hidden == set(REVIEWED_HIDDEN), "an endpoint hidden from the schema can't be checked by the access matrix"

@@ -16,8 +16,10 @@ Arizona's flag colors. The tokens are in `globals.css` and usable as Tailwind cl
 | `up` / `down` (+ `-soft` on dark) | ▲ better / ▼ worse |
 | shadcn's `primary`, `muted`, `border`, … | Everything else; `primary` is flag blue |
 
-- **Copper has one meaning.** Don't use it for decoration, buttons or selection that isn't about a goal.
-  Holding it to one job is what lets it carry meaning. Warnings ("do not discuss") stay amber.
+- **Copper has one meaning.** Don't use it for decoration, buttons, badges or selection that isn't about a
+  goal. Holding it to one job is what lets it carry meaning. The one exception is the "CS" logo mark (the
+  brand's signature). Warnings and notices ("do not discuss", the demo banner) are amber; the notification
+  badge is white on blue.
 - **Numbers are IBM Plex Mono** (`font-mono`, which also sets tabular figures). DataGrid does this for
   right-aligned columns automatically. Words are IBM Plex Sans.
 - Radius is small (`--radius` 0.375rem). Cards are white (`bg-card`) on the warm paper background.

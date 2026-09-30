@@ -12,6 +12,7 @@ const step = (...args) => {
 step("python", "-m", "scripts.create_databases"); // creates canyon_e2e the first time
 step("alembic", "upgrade", "head");
 step("python", "-m", "scripts.seed"); // wipes and reseeds; refuses anything but localhost
+step("python", "-m", "scripts.run_jobs"); // notifications to show: the same logic Inngest runs, once
 
 const port = process.env.API_PORT;
 spawn(uv, ["run", "fastapi", "run", "app/main.py", "--port", port], { stdio: "inherit", shell: true }).on("exit", (code) =>

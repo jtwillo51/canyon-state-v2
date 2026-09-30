@@ -318,6 +318,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Notifications */
+        get: operations["list_notifications_notifications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/{notification_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Read */
+        post: operations["mark_read_notifications__notification_id__read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark All Read */
+        post: operations["mark_all_read_notifications_read_all_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/dev/users": {
         parameters: {
             query?: never;
@@ -465,6 +516,35 @@ export interface components {
              */
             role: "admin" | "rep";
         };
+        /**
+         * DigestData
+         * @description A weekly digest as stored in notifications.data. A rep's holds only their own numbers; an admin's
+         *     adds the company and every rep, the same split as GET /progress.
+         */
+        DigestData: {
+            /**
+             * Week Start
+             * Format: date
+             */
+            week_start: string;
+            /**
+             * Week End
+             * Format: date
+             */
+            week_end: string;
+            mine?: components["schemas"]["WeekTally"] | null;
+            /**
+             * Stale
+             * @default 0
+             */
+            stale: number;
+            company?: components["schemas"]["WeekTally"] | null;
+            /**
+             * Reps
+             * @default []
+             */
+            reps: components["schemas"]["RepWeek"][];
+        };
         /** FieldErrorOut */
         FieldErrorOut: {
             /** Message */
@@ -513,6 +593,35 @@ export interface components {
             vs_team: number | null;
             /** Vs Team Pct */
             vs_team_pct: number | null;
+        };
+        /** NotificationOut */
+        NotificationOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "stale_referral" | "weekly_digest";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Read At */
+            read_at: string | null;
+            stale?: components["schemas"]["StaleReferralRef"] | null;
+            digest?: components["schemas"]["DigestData"] | null;
+        };
+        /** NotificationPage */
+        NotificationPage: {
+            /** Items */
+            items: components["schemas"]["NotificationOut"][];
+            /** Unread */
+            unread: number;
         };
         /** PartnerOut */
         PartnerOut: {
@@ -754,6 +863,18 @@ export interface components {
             sales: components["schemas"]["Metric"];
             close_rate: components["schemas"]["Metric"];
         };
+        /** RepWeek */
+        RepWeek: {
+            /** New Referrals */
+            new_referrals: number;
+            /** Clients */
+            clients: number;
+            /** Sales */
+            sales: number;
+            /** Close Rate */
+            close_rate: number | null;
+            rep: components["schemas"]["UserRef"];
+        };
         /** SavedViewIn */
         SavedViewIn: {
             /**
@@ -785,6 +906,32 @@ export interface components {
             name: string;
             /** Query */
             query: string;
+        };
+        /**
+         * StaleReferralRef
+         * @description The referral a stale nudge points at, looked up at read time through the reader's own scoping.
+         */
+        StaleReferralRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Client Name */
+            client_name: string;
+            partner: components["schemas"]["PartnerRef"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "referred" | "contacted" | "quoted" | "bound" | "lost";
+            /**
+             * Last Touch
+             * Format: date
+             */
+            last_touch: string;
+            /** Days Since Touch */
+            days_since_touch: number;
         };
         /**
          * StatusChange
@@ -839,6 +986,20 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * WeekTally
+         * @description One person's (or the company's) numbers for a week. Same definitions as the dashboard (app/progress.py).
+         */
+        WeekTally: {
+            /** New Referrals */
+            new_referrals: number;
+            /** Clients */
+            clients: number;
+            /** Sales */
+            sales: number;
+            /** Close Rate */
+            close_rate: number | null;
         };
     };
     responses: never;
@@ -1536,6 +1697,97 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FieldErrorOut"];
+                };
+            };
+        };
+    };
+    list_notifications_notifications_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_read_notifications__notification_id__read_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path: {
+                notification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_all_read_notifications_read_all_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

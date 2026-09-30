@@ -14,6 +14,7 @@ Run everything from `api/` with `uv run …`. Layout is a flat `app/` package:
 | `errors.py` | `FieldError(message, field)` → 422 `{message, field}` |
 | `clock.py` | `agency_today()`: the agency's date (America/Phoenix) |
 | `routers/` | one module per resource |
+| `jobs/` | Inngest background jobs: `functions.py` (schedules, steps), `stale.py` and `digest.py` (logic), `endpoint.py` (/api/inngest) |
 
 ## Conventions
 
@@ -29,6 +30,19 @@ Run everything from `api/` with `uv run …`. Layout is a flat `app/` package:
 - **Partial updates act on `model_fields_set`:** `null` clears a field, omitting it leaves it alone.
 - **Response models name every field that leaves the API.** A column reaches the browser only if a schema lists it.
 - After changing schemas or routes, regenerate the web client (see the root CLAUDE.md).
+
+## Background jobs (`app/jobs/`)
+
+- **Logic in plain async functions, Inngest in thin wrappers.** Tests call the logic directly; `functions.py`
+  only adds schedules, retries and steps. Step results must be JSON (Inngest stores and replays them).
+- **Idempotent in the database:** every notification has a `dedupe_key` under a live unique index, and inserts
+  use `ON CONFLICT DO NOTHING`, so retries and repeat runs add nothing.
+- **Schedules use the agency's clock** (`TZ=America/Phoenix` in the cron), and "today" is the first step so a
+  retry after midnight works on the same day.
+- **/api/inngest exists only when configured** and is left out of the OpenAPI schema (the matrix guard's one
+  reviewed exception); `tests/test_jobs.py` proves it refuses unsigned requests.
+- The Inngest SDK is pre-1.0 and **pinned exactly** (`inngest==0.5.19`). Read its source in `.venv` before
+  relying on an API; older examples online won't match.
 
 ## Tests (`uv run pytest`)
 

@@ -61,7 +61,15 @@ cd api && uv run fastapi dev app/main.py                                 # API o
 cd web && npm run dev                                                    # web on :3000
 ```
 
-`.claude/launch.json` in the parent folder has preview configs for both servers. If `uv` isn't on PATH, it's at
+Background jobs (Inngest) run locally against a second API instance with jobs on:
+
+```bash
+cd api && uv run python -m scripts.dev_with_jobs                          # API with jobs on :8200
+npx inngest-cli@1.45.1 dev --no-discovery -u http://localhost:8200/api/inngest   # dashboard on :8288
+cd api && uv run python -m scripts.run_jobs                               # or: run both jobs once, no Inngest
+```
+
+`.claude/launch.json` in the parent folder has preview configs for all of these servers. If `uv` isn't on PATH, it's at
 `%LOCALAPPDATA%\Microsoft\WinGet\Packages\astral-sh.uv_*\uv.exe`.
 
 ## Checks before calling work done

@@ -7,7 +7,7 @@ constraints; the lists themselves are the Literal types below, shared with the s
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal, get_args
+from typing import Any, Literal, get_args
 
 from sqlalchemy import (
     CheckConstraint,
@@ -20,6 +20,7 @@ from sqlalchemy import (
     select,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, column_property, mapped_column, relationship
 
 Role = Literal["admin", "rep"]
@@ -31,6 +32,8 @@ ReferralStep = Literal["introduction", "contact", "quote", "bind"]
 ContactMethod = Literal["In person", "Phone", "Email"]
 # Lists that can have saved views.
 ListName = Literal["referrals", "partners"]
+# What the scheduled jobs (app/jobs/) tell people about.
+NotificationKind = Literal["stale_referral", "weekly_digest"]
 
 
 def one_of(column: str, values: type) -> str:
@@ -241,11 +244,15 @@ class Activity(Record, Base):
 Referral.last_touch = column_property(
     func.greatest(
         Referral.referred_date,
+        # correlate_except: each subquery reads its own table even when the outer query joins that table
+        # too (e.g. the stale job joins referral_steps); only Referral comes from the outer row.
         select(func.max(ReferralStepCredit.date))
         .where(ReferralStepCredit.referral_id == Referral.id, ReferralStepCredit.deleted_at.is_(None))
+        .correlate_except(ReferralStepCredit)
         .scalar_subquery(),
         select(func.max(Activity.date))
         .where(Activity.referral_id == Referral.id, Activity.deleted_at.is_(None))
+        .correlate_except(Activity)
         .scalar_subquery(),
     )
 )
@@ -302,3 +309,32 @@ class SavedView(Record, Base):
     query: Mapped[str] = mapped_column(server_default="")
 
     user: Mapped[User] = relationship()
+
+
+class Notification(Record, Base):
+    """Something a scheduled job (app/jobs/) tells one person: a stale referral, or their weekly digest.
+
+    Stores references and numbers, never copies of names: a stale nudge holds the referral's id and the
+    API looks the client up through visible_referrals() when it's read, so a nudge can't outlive the
+    reader's access. `dedupe_key` makes the jobs idempotent in the database itself: a retried or
+    double-fired run inserts nothing new (see live_unique below).
+    """
+
+    __tablename__ = "notifications"
+    __table_args__ = (
+        CheckConstraint(one_of("kind", NotificationKind), name="kind"),
+        # A stale nudge always names its referral; a digest never does.
+        CheckConstraint("(kind = 'stale_referral') = (referral_id IS NOT NULL)", name="referral_for_stale"),
+        CheckConstraint("char_length(dedupe_key) BETWEEN 1 AND 200", name="dedupe_key_length"),
+        # Also serves "my notifications" lookups (it starts with user_id).
+        live_unique("notifications", "user_id", "dedupe_key"),
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))  # the recipient
+    kind: Mapped[str]
+    referral_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("referrals.id"))
+    # e.g. "stale:<referral id>:<last touch>" or "digest:<week start>"
+    dedupe_key: Mapped[str]
+    # Kind-specific numbers (a digest's tallies, a nudge's last-touch date), validated by app/schemas.py.
+    data: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    read_at: Mapped[datetime | None]

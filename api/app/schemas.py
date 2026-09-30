@@ -4,13 +4,22 @@ These also define the OpenAPI schema the TypeScript client is generated from.
 """
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, field_validator
 
-from app.models import ContactMethod, LineOfBusiness, ListName, PartnerType, ReferralStatus, ReferralStep, Role
+from app.models import (
+    ContactMethod,
+    LineOfBusiness,
+    ListName,
+    NotificationKind,
+    PartnerType,
+    ReferralStatus,
+    ReferralStep,
+    Role,
+)
 from app.sorting import check_sort
 
 # Money is Numeric in the database and a JSON number on the wire (Pydantic's default is a string).
@@ -316,3 +325,56 @@ class ActivityIn(BaseModel):
     date: date
     method: ContactMethod
     notes: str = Field(default="", max_length=2000)
+
+
+# --- Notifications (written by the scheduled jobs in app/jobs/) --------------------------------------
+
+
+class WeekTally(BaseModel):
+    """One person's (or the company's) numbers for a week. Same definitions as the dashboard (app/progress.py)."""
+
+    new_referrals: int  # referred in the week (a rep's: those they introduced)
+    clients: int  # bound in the week (credited to the rep with the bind step)
+    sales: Money  # their bound premium
+    close_rate: float | None  # of referrals decided in the week, the share bound (placeholder definition)
+
+
+class RepWeek(WeekTally):
+    rep: UserRef
+
+
+class DigestData(BaseModel):
+    """A weekly digest as stored in notifications.data. A rep's holds only their own numbers; an admin's
+    adds the company and every rep, the same split as GET /progress."""
+
+    week_start: date  # a Monday
+    week_end: date  # the Sunday after
+    mine: WeekTally | None = None  # reps
+    stale: int = 0  # open referrals with no touch in STALE_DAYS (a rep's own; the company's for admins)
+    company: WeekTally | None = None  # admins
+    reps: list[RepWeek] = []  # admins
+
+
+class StaleReferralRef(BaseModel):
+    """The referral a stale nudge points at, looked up at read time through the reader's own scoping."""
+
+    id: uuid.UUID
+    client_name: str
+    partner: PartnerRef
+    status: ReferralStatus
+    last_touch: date
+    days_since_touch: int
+
+
+class NotificationOut(BaseModel):
+    id: uuid.UUID
+    kind: NotificationKind
+    created_at: datetime
+    read_at: datetime | None
+    stale: StaleReferralRef | None = None  # kind == "stale_referral"
+    digest: DigestData | None = None  # kind == "weekly_digest"
+
+
+class NotificationPage(BaseModel):
+    items: list[NotificationOut]  # stale nudges that still apply (most overdue first), then digests (newest first)
+    unread: int

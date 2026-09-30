@@ -421,3 +421,44 @@ still open with the agency (FIELD_QUESTIONS #1). These rules are decided for the
   a clean checkout has none until something generates them, so plain `tsc` failed in CI (reproduced locally
   on a fresh clone: 6 errors before, none after).
 - The production build needs no API: every page renders per request, so nothing is fetched at build time.
+
+## Background jobs: Inngest (2026-09-30)
+
+- **Python SDK inside FastAPI** (chosen over the TypeScript SDK in Next.js): jobs run beside the data and reuse
+  the same rules (`visible_referrals`, `agency_today`, `progress.tallies`), and no all-seeing service credential
+  has to exist. The SDK is pre-1.0 (`inngest==0.5.19`), so it's pinned exactly and read from source.
+- **Two jobs**, on the agency's clock (`TZ=America/Phoenix` crons):
+  - **Stale referrals**, daily at 6:00 am: a referral is **stale when it's open and has had no touch in 14 days**
+    (`last_touch`, the same measure as the list's Stale view). Every active rep credited on it gets a nudge.
+  - **Weekly digest**, Mondays at 7:00 am: last week (Monday to Sunday) per person. A rep's holds only their own
+    numbers; an admin's holds the company and every rep, the same split as the dashboard, from the same math.
+- **Delivered in the app first** (email later, as a second channel): a `notifications` table (migration 6), a bell
+  with the unread count in the header, and a Notifications page ("Needs attention", then "Weekly digests").
+- **Notifications store references and numbers, never copied names.** A stale nudge holds the referral's id and
+  is resolved at read time through the reader's own scoping, so it never outlives their access or names a client
+  they can't see. It shows only while the referral is still stale **in the same spell**; once someone acts, it
+  disappears, and going stale again later is a new nudge. Most overdue first.
+- **Idempotent in the database, not just in Inngest:** a `dedupe_key` per person (`stale:<referral>:<last touch>`,
+  `digest:<week start>`) under a live unique index, with `ON CONFLICT DO NOTHING`. A retried or double-fired
+  run writes nothing new (tested; on the real Dev Server a second pass wrote 0).
+- **Durable steps:** "today" is the first step (memoized, so a retry after midnight works on the same day); the
+  digest runs one step per person, so one failure retries alone. The logic is plain async functions tested
+  directly; the Inngest functions are thin wrappers, tested with a stand-in step runner that insists on JSON.
+- **The endpoint Inngest calls (`/api/inngest`) is locked down:**
+  - it exists only when configured (`INNGEST_SIGNING_KEY`, or `INNGEST_DEV` locally); otherwise it's a 404. The SDK
+    *raises at startup* in production mode without a key, so mounting it unconditionally would have crashed the
+    deployed API;
+  - in production every request must be signed (tested: unsigned GET, POST and PUT all get 401), and unsigned
+    re-registration is off (the SDK defaults it on);
+  - `INNGEST_DEV` (no signing) is refused unless `DEV_AUTH` is on, so it can't be switched on for a deployed server;
+  - it's left out of the OpenAPI schema so the API contract doesn't change with configuration: the access-matrix
+    guard's one reviewed exception, listed in the test with where its security is tested instead.
+- **Found and fixed on the way:** `Referral.last_touch`'s subqueries auto-correlated away when a query also joined
+  step credits (SQLAlchemy removed the subquery's own table). They now `correlate_except` their own table.
+- **`scripts/run_jobs.py`** runs both jobs once without Inngest. The e2e stack and the demo's nightly reseed call it
+  after seeding, so there are notifications to show. The deployed demo doesn't run Inngest yet: connecting it to
+  Inngest Cloud (a free account, keys set by the owner) is the next step.
+- Tests: the matrix covers the three new endpoints; `test_jobs.py` and `test_notifications.py` cover the rules,
+  idempotency, the visibility split and the endpoint's security. Checked by breaking the code: reading nudges
+  without the reader's scoping, giving a rep the admin digest, and changing the dedupe key each run each failed
+  their tests. Two browser tests cover the bell and the page for a rep and an admin.

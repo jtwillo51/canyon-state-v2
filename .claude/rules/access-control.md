@@ -18,6 +18,7 @@ A leak of partner or client data is the costliest possible bug here. Who may see
 | Progress | Admins see everyone. A rep sees only their own numbers, the company only as shares of goal, and sales vs team only as a percentage (never colleagues' dollars). |
 | Goals | **Admins only.** |
 | Saved views | Private to their owner, **even from admins**. |
+| Notifications | Private to their recipient, **even from admins**. A stale nudge is resolved at read time through the reader's `visible_referrals`, so it never outlives their access or names a client they can't see. Digests follow the progress split (a rep's: own numbers only). |
 
 When adding or changing an endpoint:
 
