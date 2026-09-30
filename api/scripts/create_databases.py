@@ -1,4 +1,4 @@
-"""Create the local canyon_dev and canyon_test databases if they don't exist.
+"""Create the local canyon_dev, canyon_test (pytest) and canyon_e2e (Playwright) databases if they don't exist.
 
 Uses the credentials in DATABASE_URL (api/.env), so no password prompt is needed.
 Run from api/:  uv run python -m scripts.create_databases
@@ -11,7 +11,7 @@ from sqlalchemy.engine import make_url
 
 from app.config import settings
 
-DATABASES = ("canyon_dev", "canyon_test")
+DATABASES = ("canyon_dev", "canyon_test", "canyon_e2e")
 
 
 async def main() -> None:

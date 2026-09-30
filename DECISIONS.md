@@ -354,3 +354,50 @@ still open with the agency (FIELD_QUESTIONS #1). These rules are decided for the
   arrives with the command palette.
 - **Light mode only for now.** Dark mode is an open decision; shadcn's stock `.dark` block is still in
   `globals.css`, unused.
+
+## Access tests (2026-09-30)
+
+- **An access matrix covers every endpoint** (`api/tests/test_access_matrix.py`): each endpoint (and, where the
+  rule depends on what's sent, each kind of request) is asked by four people: nobody, the owning rep, another
+  rep and an admin, each with its expected status. 84 cases, each in its own rolled-back transaction.
+- **A guard fails the build when an endpoint has no row,** so a new endpoint can't ship until someone decides
+  who may call it. Deliberately public endpoints (`/health`, the dev-only `/dev/users`) are listed with a reason.
+- **The guard reads the OpenAPI schema, not `app.routes`:** since FastAPI 0.14x, `app.routes` holds included
+  routers as unexpanded wrappers, so the first draft of the guard saw no routes and passed. It now also fails
+  on an empty or incomplete list, and a second check fails if `include_in_schema` ever appears in the app
+  (a hidden endpoint would escape the guard).
+- **Statuses in the matrix, contents in focused tests.** Endpoints everyone may call but whose contents are
+  scoped (lists, the board, progress) are pinned by content tests; a leak there still answers 200. Added
+  `test_board_is_scoped_like_the_list` (the board was only tested as an admin).
+- **Checked by breaking the code:** leaking the board to every rep failed only the new board test (as
+  designed: the matrix sees statuses); dropping the admin check on the company target failed its matrix rows;
+  adding an unlisted endpoint failed the guard.
+
+## Browser tests (2026-09-30)
+
+- **Playwright** (`web/e2e/`, `npm run e2e`), Chromium only. The plan had it in Stage 3; pulled forward to check
+  the UI agrees with the API's access rules.
+- **Its own stack:** the API on :8100 against **`canyon_e2e`**, migrated and reseeded before the server answers
+  (`e2e/start-api.mjs`, so the order doesn't depend on Playwright), and `next dev` on :3100. Dev data and
+  running dev servers are never touched. Next 16 locks each output folder per server, so `distDir` is
+  configurable (`NEXT_DIST_DIR=.next-e2e`); Next adds that folder's types to `tsconfig.json`, which is kept.
+- **Dev mode, not a production build:** in production the viewer cookie is HTTPS-only and wouldn't be set on
+  `http://localhost`.
+- **First tests:** admin-only controls are shown to admins and absent for reps (goal editors, the reps table,
+  primary-rep reassignment, bound-referral edits), a rep gets a 404 on someone else's referral, and the
+  critical path: a rep drags a quoted referral to Bound, confirms, and sees it counted on the dashboard.
+- Tests find records through the API and elements by accessible name; dashboard cards gained
+  `role="group"` names for that (and for screen readers). Checked by breaking the code: showing the
+  primary-rep editor to everyone failed its test.
+
+## Working with Claude Code (2026-09-30)
+
+- **Layered context:** a root `CLAUDE.md` (what, how to run, rules that must never break), `api/CLAUDE.md` and
+  `web/CLAUDE.md` (conventions per app), and path-scoped rules in `.claude/rules/` that load only when matching
+  files are touched (access control, migrations, UI design, e2e tests).
+- **Skills for repeated workflows:** `add-endpoint` (contract → route → access matrix → tests → typed client →
+  page) and `add-migration` (reviewed, reversible, seed ids kept stable). Rules hold conventions; skills hold steps.
+- **Hooks** (`.claude/settings.json`, Node scripts in `.claude/hooks/`): block reading, searching or editing
+  anything under `private-data` and editing `.env` files; after an API contract edit, remind Claude to
+  regenerate the TypeScript client and, for a new endpoint, to add its access-matrix row. No format-on-save
+  or tests-on-stop hooks (chosen against).

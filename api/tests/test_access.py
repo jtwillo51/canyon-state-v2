@@ -15,9 +15,7 @@ pytestmark = pytest.mark.anyio
 # --- Signing in ---------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("path", ["/partners", "/referrals"])
-async def test_no_viewer_is_401(api: httpx.AsyncClient, path: str) -> None:
-    assert (await api.get(path)).status_code == 401
+# "Nobody signed in gets a 401" is checked for every endpoint in test_access_matrix.py.
 
 
 async def test_unknown_user_is_401(api: httpx.AsyncClient) -> None:
@@ -85,6 +83,13 @@ async def test_admin_sees_all_referrals(api: httpx.AsyncClient, world: World) ->
 async def test_rep_sees_only_referrals_they_are_credited_on(api: httpx.AsyncClient, world: World) -> None:
     referrals = (await api.get("/referrals", headers=as_user(world.tessa))).json()["items"]
     assert [r["client_name"] for r in referrals] == ["Client Tessa"]
+
+
+async def test_board_is_scoped_like_the_list(api: httpx.AsyncClient, world: World) -> None:
+    board = lambda who: api.get("/referrals/pipeline", headers=as_user(who))  # noqa: E731
+    assert [r["client_name"] for r in (await board(world.tessa)).json()] == ["Client Tessa"]
+    assert [r["client_name"] for r in (await board(world.jordan)).json()] == ["Client Jordan"]
+    assert {r["client_name"] for r in (await board(world.dana)).json()} == {"Client Tessa", "Client Jordan"}
 
 
 async def test_rep_gets_404_for_someone_elses_referral(api: httpx.AsyncClient, world: World) -> None:

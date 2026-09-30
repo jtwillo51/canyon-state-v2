@@ -25,10 +25,10 @@ function Card({ label, kind, m, compare, footer, goalEditor }: {
   label: string; kind: Kind; m: Metric; compare: "self" | "team"; footer?: React.ReactNode; goalEditor?: React.ReactNode;
 }) {  // prettier-ignore
   return (
-    <div className="rounded-md border bg-card p-4">
+    <div role="group" aria-label={label} className="rounded-md border bg-card p-4">
       <p className="text-[11px] tracking-wider text-muted-foreground uppercase">{label}</p>
       <div className="mt-1 flex flex-wrap items-baseline gap-x-2 font-mono">
-        <span className="text-3xl font-medium">{formatValue(kind, m.value)}</span>
+        <span data-value className="text-3xl font-medium">{formatValue(kind, m.value)}</span>
         {!goalEditor && m.goal != null && (
           <span className="text-sm whitespace-nowrap text-muted-foreground">
             {kind === "rate" ? "target" : "/"} {formatValue(kind, m.goal)}

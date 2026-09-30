@@ -26,3 +26,11 @@ Thumbs.db
 # OneDrive conflict copies
 *-Copy.*
 *conflicted copy*
+
+# Playwright (the e2e dev server builds into its own folder: Next locks .next per running server)
+.next-e2e/
+test-results/
+playwright-report/
+
+# Claude Code: personal overrides stay local (the shared config is .claude/settings.json)
+.claude/settings.local.json
