@@ -11,12 +11,12 @@ from sqlalchemy.orm import joinedload, selectinload
 from app.auth import DB, Viewer, is_admin
 from app.clock import agency_today
 from app.errors import FIELD_ERROR_RESPONSE, FieldError
-from app.models import Activity, Referral, ReferralStepCredit, User
+from app.models import Activity, Carrier, Referral, ReferralStepCredit, User
 from app.pipeline import OPEN, PipelineError, apply_move, check_move
 from app.policy import mask
 from app.scoping import credited_to, referral_scope
 from app.search import contains
-from app.schemas import ActivityIn, ActivityOut, ReferralOut, ReferralPage, ReferralQuery, StatusChange
+from app.schemas import ActivityIn, ActivityOut, ReferralOut, ReferralPage, ReferralPatch, ReferralQuery, StatusChange
 
 router = APIRouter(prefix="/referrals", tags=["referrals"])
 
@@ -143,6 +143,43 @@ async def change_status(referral_id: uuid.UUID, change: StatusChange, viewer: Vi
     await db.commit()
     # Re-read with fresh steps (new credits in, un-credited ones filtered out). Still visible: admins see
     # everything, and a rep can only move forward or to lost, which never removes their own credit.
+    stmt = visible_referrals(viewer).where(Referral.id == referral_id).execution_options(populate_existing=True)
+    return to_out((await db.execute(stmt)).scalar_one(), viewer)
+
+
+@router.patch("/{referral_id}", responses=FIELD_ERROR_RESPONSE)
+async def update_referral(referral_id: uuid.UUID, patch: ReferralPatch, viewer: Viewer, db: DB) -> ReferralOut:
+    """Fix a referral's line, carrier or premium without a pipeline move.
+
+    Anyone who can see it may edit before bind. Once bound these fields drive commission (carrier and line
+    set the rate), so only admins change them. Premium exists from quoted on: it can't be set on a referral
+    that hasn't been quoted, and a lost referral's premium stays as it was when lost.
+    """
+    stmt = visible_referrals(viewer).where(Referral.id == referral_id).with_for_update(of=Referral)
+    referral = (await db.execute(stmt)).scalar_one_or_none()
+    if referral is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Referral not found")
+    sent = patch.model_fields_set
+    if referral.status == "bound" and not is_admin(viewer):
+        raise FieldError("Only an admin can change a bound referral.", field=next(iter(sent), None))
+
+    if "line_of_business" in sent:
+        if patch.line_of_business is None:
+            raise FieldError("Choose a line of business.", field="line_of_business")
+        referral.line_of_business = patch.line_of_business
+    if "carrier_id" in sent:
+        exists = patch.carrier_id and (await db.execute(select(Carrier.id).where(Carrier.id == patch.carrier_id))).first()
+        if not exists:
+            raise FieldError("Choose a carrier from the list.", field="carrier_id")
+        referral.carrier_id = patch.carrier_id  # type: ignore[assignment]
+    if "premium" in sent:
+        if referral.status not in ("quoted", "bound"):
+            raise FieldError("The premium is set when the referral is quoted.", field="premium")
+        if patch.premium is None:
+            raise FieldError("Enter the annual premium.", field="premium")
+        referral.premium = patch.premium
+
+    await db.commit()
     stmt = visible_referrals(viewer).where(Referral.id == referral_id).execution_options(populate_existing=True)
     return to_out((await db.execute(stmt)).scalar_one(), viewer)
 

@@ -38,7 +38,12 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Partner
+         * @description Edit shared partner facts. Anyone may change do-not-contact, the "do not discuss" note and the
+         *     territory; only admins reassign the primary rep (v1's rules, plus territory for anyone).
+         */
+        patch: operations["update_partner_partners__partner_id__patch"];
         trace?: never;
     };
     "/referrals": {
@@ -95,7 +100,15 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Referral
+         * @description Fix a referral's line, carrier or premium without a pipeline move.
+         *
+         *     Anyone who can see it may edit before bind. Once bound these fields drive commission (carrier and line
+         *     set the rate), so only admins change them. Premium exists from quoted on: it can't be set on a referral
+         *     that hasn't been quoted, and a lost referral's premium stays as it was when lost.
+         */
+        patch: operations["update_referral_referrals__referral_id__patch"];
         trace?: never;
     };
     "/referrals/{referral_id}/status": {
@@ -232,6 +245,23 @@ export interface paths {
         post?: never;
         /** Delete View */
         delete: operations["delete_view_views__view_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/carriers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Carriers */
+        get: operations["list_carriers_carriers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -424,6 +454,21 @@ export interface components {
             /** Offset */
             offset: number;
         };
+        /**
+         * PartnerPatch
+         * @description Inline edit of a partner. Only fields present in the request change (`model_fields_set`),
+         *     so "primary_rep_id": null unassigns, while leaving it out leaves it alone.
+         */
+        PartnerPatch: {
+            /** Do Not Contact */
+            do_not_contact?: boolean | null;
+            /** Sensitive Items */
+            sensitive_items?: string | null;
+            /** Territory */
+            territory?: string | null;
+            /** Primary Rep Id */
+            primary_rep_id?: string | null;
+        };
         /** PartnerRef */
         PartnerRef: {
             /**
@@ -553,6 +598,18 @@ export interface components {
             limit: number;
             /** Offset */
             offset: number;
+        };
+        /**
+         * ReferralPatch
+         * @description Inline edit of a referral's policy details. Pipeline moves go through /status instead.
+         */
+        ReferralPatch: {
+            /** Line Of Business */
+            line_of_business?: ("Auto" | "Home" | "Umbrella" | "Life" | "Commercial") | null;
+            /** Carrier Id */
+            carrier_id?: string | null;
+            /** Premium */
+            premium?: number | string | null;
         };
         /** SavedViewIn */
         SavedViewIn: {
@@ -724,6 +781,43 @@ export interface operations {
             };
         };
     };
+    update_partner_partners__partner_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path: {
+                partner_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartnerPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartnerOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldErrorOut"];
+                };
+            };
+        };
+    };
     list_referrals_referrals_get: {
         parameters: {
             query?: {
@@ -828,6 +922,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_referral_referrals__referral_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path: {
+                referral_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReferralPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferralOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldErrorOut"];
                 };
             };
         };
@@ -1119,6 +1250,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_carriers_carriers_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CarrierRef"][];
+                };
             };
             /** @description Validation Error */
             422: {

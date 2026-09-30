@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ChooseViewer } from "@/components/choose-viewer";
+import { DoNotContactToggle, DoNotDiscuss, PartnerContactFields } from "@/components/partner/partner-fields";
 import { ReferralTable } from "@/components/referral-table";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,15 +16,17 @@ export default async function PartnerPage({ params }: PageProps<"/partners/[id]"
   const api = await getApi();
   if (!api) return <ChooseViewer />;
 
-  // Both requests run in parallel. Referrals are scoped by the API: a rep sees only their own.
-  const [partnerRes, referralsRes] = await Promise.all([
+  // All in parallel. Referrals are scoped by the API: a rep sees only their own.
+  const [partnerRes, referralsRes, me, reps] = await Promise.all([
     api.GET("/partners/{partner_id}", { params: { path: { partner_id: id } } }),
     api.GET("/referrals", { params: { query: { partner_id: id, limit: 200 } } }),
+    api.GET("/users/me"),
+    api.GET("/users/reps"),
   ]);
   if (partnerRes.response.status === 404 || partnerRes.response.status === 422) notFound();
   const partner = partnerRes.data;
   const referrals = referralsRes.data?.items;
-  if (!partner || !referrals) throw new Error("Couldn't load this partner");
+  if (!partner || !referrals || !me.data || !reps.data) throw new Error("Couldn't load this partner");
 
   return (
     <div className="space-y-6">
@@ -41,23 +44,19 @@ export default async function PartnerPage({ params }: PageProps<"/partners/[id]"
           {partner.business_name}
           {partner.territory && ` · ${partner.territory}`}
         </p>
+        <DoNotContactToggle partner={partner} />
       </div>
 
-      {partner.sensitive_items && (
-        <div role="note" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-          <strong>Do not discuss:</strong> {partner.sensitive_items}
-        </div>
-      )}
+      {/* Shown to the whole team on purpose, so nobody raises the topic; anyone can edit it. */}
+      <DoNotDiscuss partner={partner} />
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Contact</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1 text-sm">
-            <p>{partner.phone || "—"}</p>
-            <p>{partner.email || "—"}</p>
-            <p className="text-muted-foreground">Primary rep: {partner.primary_rep?.name ?? "Unassigned"}</p>
+          <CardContent>
+            <PartnerContactFields partner={partner} reps={reps.data} isAdmin={me.data.role === "admin"} />
           </CardContent>
         </Card>
         <Card>

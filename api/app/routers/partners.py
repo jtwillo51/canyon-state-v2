@@ -9,10 +9,11 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import ColumnElement, Float, Select, and_, case, cast, func, or_, select, true
 from sqlalchemy.orm import joinedload, selectinload
 
-from app.auth import DB, Viewer
+from app.auth import DB, Viewer, is_admin
 from app.clock import agency_today
+from app.errors import FIELD_ERROR_RESPONSE, FieldError
 from app.models import Partner, Referral, User
-from app.schemas import PartnerOut, PartnerPage, PartnerQuery, PartnerRow, PartnerStats
+from app.schemas import PartnerOut, PartnerPage, PartnerPatch, PartnerQuery, PartnerRow, PartnerStats
 from app.scoping import referral_scope
 from app.search import contains
 
@@ -102,9 +103,43 @@ async def list_partners(viewer: Viewer, db: DB, f: Annotated[PartnerQuery, Query
     return PartnerPage(items=items, total=total, limit=f.limit, offset=f.offset)
 
 
-@router.get("/{partner_id}")
-async def get_partner(partner_id: uuid.UUID, viewer: Viewer, db: DB) -> PartnerOut:
+async def _partner(partner_id: uuid.UUID, db: DB) -> Partner:
     partner = (await db.execute(_partners().where(Partner.id == partner_id))).scalar_one_or_none()
     if partner is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Partner not found")
+    return partner
+
+
+@router.get("/{partner_id}")
+async def get_partner(partner_id: uuid.UUID, viewer: Viewer, db: DB) -> PartnerOut:
+    return PartnerOut.model_validate(await _partner(partner_id, db))
+
+
+@router.patch("/{partner_id}", responses=FIELD_ERROR_RESPONSE)
+async def update_partner(partner_id: uuid.UUID, patch: PartnerPatch, viewer: Viewer, db: DB) -> PartnerOut:
+    """Edit shared partner facts. Anyone may change do-not-contact, the "do not discuss" note and the
+    territory; only admins reassign the primary rep (v1's rules, plus territory for anyone)."""
+    partner = await _partner(partner_id, db)
+    sent = patch.model_fields_set
+
+    if "primary_rep_id" in sent:
+        if not is_admin(viewer):
+            raise FieldError("Only an admin can change the primary rep.", field="primary_rep_id")
+        if patch.primary_rep_id is not None:
+            rep = (
+                await db.execute(select(User).where(User.id == patch.primary_rep_id, User.role == "rep", User.active))
+            ).scalar_one_or_none()
+            if rep is None:
+                raise FieldError("Choose an active rep.", field="primary_rep_id")
+        partner.primary_rep_id = patch.primary_rep_id
+    for field in ("do_not_contact", "sensitive_items", "territory"):
+        if field in sent:
+            value = getattr(patch, field)
+            if value is None:
+                raise FieldError("This can't be empty.", field=field)
+            setattr(partner, field, value.strip() if isinstance(value, str) else value)
+
+    await db.commit()
+    # The session still holds the old primary_rep object; reload it (async won't lazy-load it for us).
+    await db.refresh(partner, ["primary_rep"])
     return PartnerOut.model_validate(partner)

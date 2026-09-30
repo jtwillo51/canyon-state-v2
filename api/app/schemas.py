@@ -205,6 +205,28 @@ class ActivityOut(Schema):
     logged_by: UserRef  # who entered it
 
 
+class PartnerPatch(BaseModel):
+    """Inline edit of a partner. Only fields present in the request change (`model_fields_set`),
+    so "primary_rep_id": null unassigns, while leaving it out leaves it alone."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    do_not_contact: bool | None = None
+    sensitive_items: str | None = Field(default=None, max_length=2000)
+    territory: str | None = Field(default=None, max_length=100)
+    primary_rep_id: uuid.UUID | None = None  # admins only
+
+
+class ReferralPatch(BaseModel):
+    """Inline edit of a referral's policy details. Pipeline moves go through /status instead."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    line_of_business: LineOfBusiness | None = None
+    carrier_id: uuid.UUID | None = None
+    premium: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=2)
+
+
 class SavedViewOut(Schema):
     id: uuid.UUID
     list: ListName

@@ -251,3 +251,22 @@ still open with the agency (FIELD_QUESTIONS #1). These rules are decided for the
 - **Shared list building blocks** (`components/list/`: `DataGrid`, `ViewTabs`, `Chips`; `lib/list-views.ts`),
   used by both lists; each list only defines its columns, URL parsing and built-in views. Scoping helpers
   moved to `app/scoping.py` and LIKE-escaping to `app/search.py`, shared by both routers.
+
+## Inline edit (2026-09-30)
+
+- **Partner (`PATCH /partners/{id}`):** anyone may change do-not-contact, the "do not discuss" note and the
+  territory; only admins reassign the primary rep (to an active rep, or null to unassign). v1's rules, plus
+  territory for anyone (a shared fact; v1 never covered it).
+- **Referral (`PATCH /referrals/{id}`):** line of business, carrier and premium. Anyone who can see the
+  referral may edit before bind; **once bound, admins only**, because carrier and line set the commission rate
+  and premium is the revenue. Premium exists from quoted on; it can't be set on a referral that hasn't been
+  quoted (that happens through the pipeline move). Status changes stay on `/status`.
+- **Partial updates honor "not sent" vs "null":** endpoints act only on `model_fields_set`, so
+  `"primary_rep_id": null` unassigns while omitting it leaves it alone. Unknown fields are refused.
+- **`GET /carriers`** feeds the carrier picker.
+- **One error shape, including FastAPI's own validation:** schema errors (e.g. premium ≤ 0) also answer
+  `{message, field}`, with FastAPI's standard `detail` kept so the documented schema holds.
+- **UI:** a reusable `InlineField` (text, note, number, select): pencil to edit, Enter or ✓ saves, Escape
+  cancels; the new value shows optimistically and, if refused, the editor reopens with what was typed and the
+  API's reason. Fields the viewer can't change say why ("admins change this"). Edits live on the partner and
+  referral pages; the lists stay read-only for now.

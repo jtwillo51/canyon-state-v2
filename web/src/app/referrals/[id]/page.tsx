@@ -4,10 +4,11 @@ import { notFound } from "next/navigation";
 
 import { ChooseViewer } from "@/components/choose-viewer";
 import { LogActivity } from "@/components/referral/log-activity";
+import { ReferralPolicyFields } from "@/components/referral/referral-fields";
 import { Timeline } from "@/components/referral/timeline";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { agencyToday, blockedOr, day, money } from "@/lib/format";
+import { agencyToday, blockedOr, day } from "@/lib/format";
 import { buildTimeline } from "@/lib/timeline";
 import { getApi } from "@/lib/viewer";
 
@@ -19,16 +20,17 @@ export default async function ReferralPage({ params }: PageProps<"/referrals/[id
   if (!api) return <ChooseViewer />;
 
   const path = { params: { path: { referral_id: id } } };
-  const [referral, activities, me, team] = await Promise.all([
+  const [referral, activities, me, team, carriers] = await Promise.all([
     api.GET("/referrals/{referral_id}", path),
     api.GET("/referrals/{referral_id}/activities", path),
     api.GET("/users/me"),
     api.GET("/users"),
+    api.GET("/carriers"),
   ]);
   // The API returns 404 for someone else's referral too, so it's indistinguishable from "doesn't exist".
   if (referral.response.status === 404 || referral.response.status === 422) notFound();
   const r = referral.data;
-  if (!r || !activities.data || !me.data || !team.data) throw new Error("Couldn't load this referral");
+  if (!r || !activities.data || !me.data || !team.data || !carriers.data) throw new Error("Couldn't load this referral");
 
   return (
     <div className="space-y-6">
@@ -56,10 +58,8 @@ export default async function ReferralPage({ params }: PageProps<"/referrals/[id
           <CardHeader>
             <CardTitle>Policy</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1 text-sm">
-            <p>Carrier: {r.carrier.name}</p>
-            <p>Premium: {r.premium == null ? "Not quoted yet" : `${money(r.premium)} / yr`}</p>
-            <p>Bound: {day(r.bound_date)}</p>
+          <CardContent>
+            <ReferralPolicyFields referral={r} carriers={carriers.data} isAdmin={me.data.role === "admin"} />
           </CardContent>
         </Card>
         <Card>
