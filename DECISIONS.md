@@ -413,5 +413,8 @@ still open with the agency (FIELD_QUESTIONS #1). These rules are decided for the
   difference. Checked by adding a schema field without regenerating: the check failed.
 - **Least privilege:** the workflow token is read-only (`permissions: contents: read`); no secrets are used;
   all data is synthetic. A newer push cancels the run it replaces.
+- **Third-party actions are pinned to a commit SHA** (`astral-sh/setup-uv@<sha> # v10.2.0`): a tag can be
+  moved to different code, a commit can't. GitHub's own `actions/*` stay on major tags. (The first run failed
+  because setup-uv publishes no `v10` tag; the reseed workflow had the same bug and is fixed too.)
 - **Node 24** (the current LTS line) in CI; local development happens to run Node 23.
 - The production build needs no API: every page renders per request, so nothing is fetched at build time.
