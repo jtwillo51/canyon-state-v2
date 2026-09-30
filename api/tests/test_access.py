@@ -78,12 +78,12 @@ async def test_every_rep_sees_every_partner_with_do_not_discuss(api: httpx.Async
 
 
 async def test_admin_sees_all_referrals(api: httpx.AsyncClient, world: World) -> None:
-    referrals = (await api.get("/referrals", headers=as_user(world.dana))).json()
+    referrals = (await api.get("/referrals", headers=as_user(world.dana))).json()["items"]
     assert {r["client_name"] for r in referrals} == {"Client Tessa", "Client Jordan"}
 
 
 async def test_rep_sees_only_referrals_they_are_credited_on(api: httpx.AsyncClient, world: World) -> None:
-    referrals = (await api.get("/referrals", headers=as_user(world.tessa))).json()
+    referrals = (await api.get("/referrals", headers=as_user(world.tessa))).json()["items"]
     assert [r["client_name"] for r in referrals] == ["Client Tessa"]
 
 
@@ -94,7 +94,7 @@ async def test_rep_gets_404_for_someone_elses_referral(api: httpx.AsyncClient, w
 
 async def test_partner_filter_keeps_scoping(api: httpx.AsyncClient, world: World) -> None:
     r = await api.get("/referrals", params={"partner_id": str(world.partner.id)}, headers=as_user(world.jordan))
-    assert [x["client_name"] for x in r.json()] == ["Client Jordan"]
+    assert [x["client_name"] for x in r.json()["items"]] == ["Client Jordan"]
 
 
 async def test_owner_sees_blocked_fields_unmasked(api: httpx.AsyncClient, world: World) -> None:
@@ -109,7 +109,7 @@ async def test_owner_sees_blocked_fields_unmasked(api: httpx.AsyncClient, world:
 async def test_soft_deleted_credit_revokes_access(api: httpx.AsyncClient, db: AsyncSession, world: World) -> None:
     world.tessas_credit.deleted_at = datetime.now(UTC)
     await db.flush()
-    assert (await api.get("/referrals", headers=as_user(world.tessa))).json() == []
+    assert (await api.get("/referrals", headers=as_user(world.tessa))).json()["items"] == []
     r = await api.get(f"/referrals/{world.tessas_referral.id}", headers=as_user(world.tessa))
     assert r.status_code == 404
 

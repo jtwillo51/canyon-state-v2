@@ -10,7 +10,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
 
-from app.models import ContactMethod, LineOfBusiness, PartnerType, ReferralStatus, ReferralStep, Role
+from app.models import ContactMethod, LineOfBusiness, ListName, PartnerType, ReferralStatus, ReferralStep, Role
 
 # Money is Numeric in the database and a JSON number on the wire (Pydantic's default is a string).
 Money = Annotated[Decimal, PlainSerializer(float, return_type=float)]
@@ -91,7 +91,46 @@ class ReferralOut(Schema):
     premium: Money | None  # null until quoted
     bound_date: date | None
     lost_date: date | None
+    # Latest of the referral date, its step credits and its logged activity. "Stale" is judged by this.
+    last_touch: date
     steps: list[StepOut]
+
+
+ReferralSort = Literal[
+    "referred_date", "-referred_date",
+    "last_touch", "-last_touch",
+    "client_name", "-client_name",
+    "premium", "-premium",
+    "status", "-status",
+]  # fmt: skip
+
+
+class ReferralQuery(BaseModel):
+    """Filters, sort and page for GET /referrals, all from the query string. Unknown keys are refused."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: list[ReferralStatus] = []
+    line: list[LineOfBusiness] = []
+    partner_id: uuid.UUID | None = None
+    rep_id: uuid.UUID | None = None  # credited on at least one step
+    stale_days: int | None = Field(default=None, ge=1, le=3650)  # open, no touch in this many days
+    bound_from: date | None = None
+    bound_to: date | None = None
+    has_premium: bool | None = None
+    q: str | None = Field(default=None, max_length=100)  # client name contains
+    sort: ReferralSort = "-referred_date"
+    limit: int = Field(default=50, ge=1, le=200)
+    offset: int = Field(default=0, ge=0)
+
+
+class ReferralPage(BaseModel):
+    """One page of a filtered, sorted referral list."""
+
+    items: list[ReferralOut]
+    total: int  # matching referrals across all pages
+    limit: int
+    offset: int
 
 
 class StatusChange(BaseModel):
@@ -111,6 +150,20 @@ class ActivityOut(Schema):
     notes: str
     rep: UserRef  # who made contact
     logged_by: UserRef  # who entered it
+
+
+class SavedViewOut(Schema):
+    id: uuid.UUID
+    list: ListName
+    name: str
+    query: str
+
+
+class SavedViewIn(BaseModel):
+    list: ListName
+    name: str = Field(min_length=1, max_length=60)
+    # The list page's URL query without the "?": only "key=value" pairs, joined by "&".
+    query: str = Field(default="", max_length=1000, pattern=r"^[A-Za-z0-9_\-.,~%=&+]*$")
 
 
 class ActivityIn(BaseModel):

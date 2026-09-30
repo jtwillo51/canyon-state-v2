@@ -211,3 +211,26 @@ still open with the agency (FIELD_QUESTIONS #1). These rules are decided for the
   action even when the save fails, which would wipe what was typed. The form clears only on success and
   marks the failing field `aria-invalid`.
 - **Seeded activity uses its own random generator**, so adding it didn't shift any existing id.
+
+## Saved list views (2026-09-29)
+
+- **The URL is the list's state:** filters, sort, visible columns and page (`/referrals?status=quoted,bound&
+  stale=30&sort=-premium&cols=…&page=2`). A view is a link; Back works. The page is a Server Component that
+  reads the URL and asks the API; the interactive pieces only ever change the URL.
+- **The API filters, sorts and pages** (`GET /referrals` takes a `ReferralQuery` model as its query string,
+  unknown keys refused, and returns `{items, total, limit, offset}`). Scoping applies to the count as well
+  as the page, so a rep can't learn agency-wide totals; a test proves it (and caught its removal).
+  50 rows per page. Search escapes LIKE wildcards. Premium sorts put "not quoted" last both ways.
+- **`last_touch`** (latest of referral date, live step credits, live activity) is a SQL `column_property`,
+  always current. **"Stale N days" = open and last touch N+ days ago**, v1's definition.
+- **Built-in views** (in the web app, as query strings): All, Open referrals, Stale 30+ days, Bound this month
+  (Arizona month), Lost after quoting (lost with a premium on file).
+- **Saved views** (migration 4, `saved_views`): private to their owner; name unique per person among live
+  views; the stored query is restricted to plain `key=value` characters, so it can only ever become a link
+  to this list. Shown as tabs; "Save view" appears when the current URL matches no view.
+- **TanStack Table v9** (`useTable`, features opted in with `tableFeatures`), read from the docs shipped in the
+  package since v9 differs from v8 tutorials. Sorting is manual (the API sorts all rows, not one page) and
+  both sorting and column visibility are controlled by the URL.
+- **Error-path hygiene:** after a failed insert the endpoint rolls the session back before raising, so the
+  session is never left unusable.
+- Redundant index dropped in review: the unique `(user_id, list, name)` index already serves lookups by user.

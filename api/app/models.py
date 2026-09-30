@@ -17,9 +17,10 @@ from sqlalchemy import (
     MetaData,
     Numeric,
     func,
+    select,
     text,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, column_property, mapped_column, relationship
 
 Role = Literal["admin", "rep"]
 PartnerType = Literal["Loan officer", "Realtor", "Financial advisor", "Other"]
@@ -28,6 +29,8 @@ LineOfBusiness = Literal["Auto", "Home", "Umbrella", "Life", "Commercial"]
 ReferralStep = Literal["introduction", "contact", "quote", "bind"]
 # How a rep reached someone: the agency's own form uses these three.
 ContactMethod = Literal["In person", "Phone", "Email"]
+# Lists that can have saved views.
+ListName = Literal["referrals", "partners"]
 
 
 def one_of(column: str, values: type) -> str:
@@ -229,3 +232,41 @@ class Activity(Record, Base):
     partner: Mapped[Partner | None] = relationship()
     rep: Mapped[User] = relationship(foreign_keys=[rep_id])
     logged_by: Mapped[User] = relationship(foreign_keys=[logged_by_id])
+
+
+# A referral's last touch: the latest of its referral date, any live step credit, and any live logged
+# activity (v1's definition, used for "stale"). Computed in SQL on every load, so it's never out of date.
+# Defined after Activity because it reads that table; deleted rows are excluded explicitly because the
+# automatic soft-delete filter doesn't reach inside a column expression.
+Referral.last_touch = column_property(
+    func.greatest(
+        Referral.referred_date,
+        select(func.max(ReferralStepCredit.date))
+        .where(ReferralStepCredit.referral_id == Referral.id, ReferralStepCredit.deleted_at.is_(None))
+        .scalar_subquery(),
+        select(func.max(Activity.date))
+        .where(Activity.referral_id == Referral.id, Activity.deleted_at.is_(None))
+        .scalar_subquery(),
+    )
+)
+
+
+class SavedView(Record, Base):
+    """A person's named view of a list: its filters, sort and columns, stored as the URL query."""
+
+    __tablename__ = "saved_views"
+    __table_args__ = (
+        CheckConstraint(one_of("list", ListName), name="list"),
+        CheckConstraint("char_length(name) BETWEEN 1 AND 60", name="name_length"),
+        CheckConstraint("char_length(query) <= 1000", name="query_length"),
+        live_unique("saved_views", "user_id", "list", "name"),
+    )
+
+    # No separate index: the unique index above starts with user_id, so it serves "my views" lookups.
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    list: Mapped[str]
+    name: Mapped[str]
+    # The list page's URL query, e.g. "status=quoted&sort=-premium&cols=client,partner,premium".
+    query: Mapped[str] = mapped_column(server_default="")
+
+    user: Mapped[User] = relationship()

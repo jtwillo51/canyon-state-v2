@@ -25,6 +25,7 @@ REFERRAL = ReferralOut(
     premium=None,
     bound_date=None,
     lost_date=None,
+    last_touch=date(2026, 1, 1),
     steps=[],
 )
 

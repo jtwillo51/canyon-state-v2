@@ -18,11 +18,11 @@ export default async function PartnerPage({ params }: PageProps<"/partners/[id]"
   // Both requests run in parallel. Referrals are scoped by the API: a rep sees only their own.
   const [partnerRes, referralsRes] = await Promise.all([
     api.GET("/partners/{partner_id}", { params: { path: { partner_id: id } } }),
-    api.GET("/referrals", { params: { query: { partner_id: id } } }),
+    api.GET("/referrals", { params: { query: { partner_id: id, limit: 200 } } }),
   ]);
   if (partnerRes.response.status === 404 || partnerRes.response.status === 422) notFound();
   const partner = partnerRes.data;
-  const referrals = referralsRes.data;
+  const referrals = referralsRes.data?.items;
   if (!partner || !referrals) throw new Error("Couldn't load this partner");
 
   return (

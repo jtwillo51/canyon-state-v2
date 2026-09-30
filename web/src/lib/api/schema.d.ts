@@ -45,7 +45,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Referrals */
+        /**
+         * List Referrals
+         * @description A filtered, sorted page of the referrals this viewer may see.
+         */
         get: operations["list_referrals_referrals_get"];
         put?: never;
         post?: never;
@@ -191,6 +194,41 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Views */
+        get: operations["list_views_views_get"];
+        put?: never;
+        /** Save View */
+        post: operations["save_view_views_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/views/{view_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete View */
+        delete: operations["delete_view_views__view_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -431,8 +469,59 @@ export interface components {
             bound_date: string | null;
             /** Lost Date */
             lost_date: string | null;
+            /**
+             * Last Touch
+             * Format: date
+             */
+            last_touch: string;
             /** Steps */
             steps: components["schemas"]["StepOut"][];
+        };
+        /**
+         * ReferralPage
+         * @description One page of a filtered, sorted referral list.
+         */
+        ReferralPage: {
+            /** Items */
+            items: components["schemas"]["ReferralOut"][];
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
+        /** SavedViewIn */
+        SavedViewIn: {
+            /**
+             * List
+             * @enum {string}
+             */
+            list: "referrals" | "partners";
+            /** Name */
+            name: string;
+            /**
+             * Query
+             * @default
+             */
+            query: string;
+        };
+        /** SavedViewOut */
+        SavedViewOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * List
+             * @enum {string}
+             */
+            list: "referrals" | "partners";
+            /** Name */
+            name: string;
+            /** Query */
+            query: string;
         };
         /**
          * StatusChange
@@ -564,7 +653,18 @@ export interface operations {
     list_referrals_referrals_get: {
         parameters: {
             query?: {
+                status?: ("referred" | "contacted" | "quoted" | "bound" | "lost")[];
+                line?: ("Auto" | "Home" | "Umbrella" | "Life" | "Commercial")[];
                 partner_id?: string | null;
+                rep_id?: string | null;
+                stale_days?: number | null;
+                bound_from?: string | null;
+                bound_to?: string | null;
+                has_premium?: boolean | null;
+                q?: string | null;
+                sort?: "referred_date" | "-referred_date" | "last_touch" | "-last_touch" | "client_name" | "-client_name" | "premium" | "-premium" | "status" | "-status";
+                limit?: number;
+                offset?: number;
             };
             header?: {
                 "x-dev-user"?: string | null;
@@ -580,7 +680,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReferralOut"][];
+                    "application/json": components["schemas"]["ReferralPage"];
                 };
             };
             /** @description Validation Error */
@@ -846,6 +946,105 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UserRef"][];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_views_views_get: {
+        parameters: {
+            query: {
+                list: "referrals" | "partners";
+            };
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedViewOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_view_views_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavedViewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedViewOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldErrorOut"];
+                };
+            };
+        };
+    };
+    delete_view_views__view_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path: {
+                view_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

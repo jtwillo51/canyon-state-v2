@@ -2,9 +2,10 @@
 
 import uuid
 from datetime import timedelta
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import Select, and_, or_, select
+from fastapi import APIRouter, HTTPException, Query, status
+from sqlalchemy import ColumnElement, Select, and_, case, func, or_, select
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.auth import DB, Viewer, is_admin
@@ -13,12 +14,22 @@ from app.errors import FIELD_ERROR_RESPONSE, FieldError
 from app.models import Activity, Referral, ReferralStepCredit, User
 from app.pipeline import OPEN, PipelineError, apply_move, check_move
 from app.policy import mask
-from app.schemas import ActivityIn, ActivityOut, ReferralOut, StatusChange
+from app.schemas import ActivityIn, ActivityOut, ReferralOut, ReferralPage, ReferralQuery, StatusChange
 
 router = APIRouter(prefix="/referrals", tags=["referrals"])
 
 # How long bound and lost referrals stay on the pipeline board.
 BOARD_RECENT_DAYS = 30
+
+
+def credited_to(rep_id: uuid.UUID) -> ColumnElement[bool]:
+    """Referrals with a live step credit for this rep (the soft-delete filter covers the subquery)."""
+    return Referral.id.in_(select(ReferralStepCredit.referral_id).where(ReferralStepCredit.rep_id == rep_id))
+
+
+def scope(viewer: User) -> list[ColumnElement[bool]]:
+    """Conditions limiting referrals to what this viewer may see: nothing for admins, their own for reps."""
+    return [] if is_admin(viewer) else [credited_to(viewer.id)]
 
 
 def visible_referrals(viewer: User) -> Select[tuple[Referral]]:
@@ -28,11 +39,7 @@ def visible_referrals(viewer: User) -> Select[tuple[Referral]]:
         joinedload(Referral.carrier),
         selectinload(Referral.steps).joinedload(ReferralStepCredit.rep),
     )
-    if is_admin(viewer):
-        return stmt
-    # A soft-deleted step credit no longer makes the rep an owner (the soft-delete filter covers subqueries).
-    owned = select(ReferralStepCredit.referral_id).where(ReferralStepCredit.rep_id == viewer.id)
-    return stmt.where(Referral.id.in_(owned))
+    return stmt.where(*scope(viewer))
 
 
 def to_out(referral: Referral, viewer: User) -> ReferralOut:
@@ -40,13 +47,56 @@ def to_out(referral: Referral, viewer: User) -> ReferralOut:
     return mask(ReferralOut.model_validate(referral), "referral", viewer, owners)
 
 
+# Pipeline order, so sorting by status reads referred -> lost rather than alphabetically.
+_STATUS_ORDER = case({"referred": 0, "contacted": 1, "quoted": 2, "bound": 3, "lost": 4}, value=Referral.status)
+_SORT_COLUMNS: dict[str, ColumnElement[Any]] = {
+    "referred_date": Referral.referred_date,
+    "last_touch": Referral.last_touch,
+    "client_name": func.lower(Referral.client_name),
+    "premium": Referral.premium,
+    "status": _STATUS_ORDER,
+}
+
+
+def _filters(f: ReferralQuery) -> list[ColumnElement[bool]]:
+    conditions: list[ColumnElement[bool]] = []
+    if f.status:
+        conditions.append(Referral.status.in_(f.status))
+    if f.line:
+        conditions.append(Referral.line_of_business.in_(f.line))
+    if f.partner_id:
+        conditions.append(Referral.partner_id == f.partner_id)
+    if f.rep_id:
+        conditions.append(credited_to(f.rep_id))
+    if f.stale_days:
+        # v1's "stale": still open, and nothing has happened for this many days.
+        conditions += [Referral.status.in_(OPEN), Referral.last_touch <= agency_today() - timedelta(days=f.stale_days)]
+    if f.bound_from:
+        conditions.append(Referral.bound_date >= f.bound_from)
+    if f.bound_to:
+        conditions.append(Referral.bound_date <= f.bound_to)
+    if f.has_premium is not None:
+        conditions.append(Referral.premium.is_not(None) if f.has_premium else Referral.premium.is_(None))
+    if f.q:
+        # Escape LIKE wildcards so a search for "50%" means the characters, not "starts with 50".
+        term = f.q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        conditions.append(Referral.client_name.ilike(f"%{term}%", escape="\\"))
+    return conditions
+
+
 @router.get("")
-async def list_referrals(viewer: Viewer, db: DB, partner_id: uuid.UUID | None = None) -> list[ReferralOut]:
-    stmt = visible_referrals(viewer).order_by(Referral.referred_date.desc())
-    if partner_id is not None:
-        stmt = stmt.where(Referral.partner_id == partner_id)
-    referrals = (await db.execute(stmt)).scalars().all()
-    return [to_out(r, viewer) for r in referrals]
+async def list_referrals(viewer: Viewer, db: DB, f: Annotated[ReferralQuery, Query()]) -> ReferralPage:
+    """A filtered, sorted page of the referrals this viewer may see."""
+    where = [*scope(viewer), *_filters(f)]  # scope applies to the count too, not just the page
+    key = f.sort.removeprefix("-")
+    column = _SORT_COLUMNS[key]
+    order = (column.desc() if f.sort.startswith("-") else column.asc()).nulls_last()
+
+    page_stmt = visible_referrals(viewer).where(*where).order_by(order, Referral.id).limit(f.limit).offset(f.offset)
+    count_stmt = select(func.count()).select_from(Referral).where(*where)
+    referrals = (await db.execute(page_stmt)).scalars().all()
+    total = (await db.execute(count_stmt)).scalar_one()
+    return ReferralPage(items=[to_out(r, viewer) for r in referrals], total=total, limit=f.limit, offset=f.offset)
 
 
 # Declared before /{referral_id}, or "pipeline" would be parsed as an id.
