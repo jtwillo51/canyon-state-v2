@@ -4,6 +4,7 @@ import type { components } from "./schema";
 type Schemas = components["schemas"];
 
 export type Partner = Schemas["PartnerOut"];
+export type PartnerRow = Schemas["PartnerRow"];
 export type Referral = Schemas["ReferralOut"];
 export type ReferralStatus = Referral["status"];
 export type Step = Schemas["StepOut"];

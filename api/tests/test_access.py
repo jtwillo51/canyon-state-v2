@@ -68,7 +68,7 @@ async def test_rep_list_needs_a_viewer_and_lists_active_reps_only(
 
 async def test_every_rep_sees_every_partner_with_do_not_discuss(api: httpx.AsyncClient, world: World) -> None:
     for rep in (world.tessa, world.jordan):
-        partners = (await api.get("/partners", headers=as_user(rep))).json()
+        partners = (await api.get("/partners", headers=as_user(rep))).json()["items"]
         assert [p["name"] for p in partners] == ["Pat Partner"]
         # Shared on purpose, so nobody raises the topic.
         assert partners[0]["sensitive_items"] == "Avoid talking about the move."
@@ -117,5 +117,5 @@ async def test_soft_deleted_credit_revokes_access(api: httpx.AsyncClient, db: As
 async def test_soft_deleted_partner_disappears(api: httpx.AsyncClient, db: AsyncSession, world: World) -> None:
     world.partner.deleted_at = datetime.now(UTC)
     await db.flush()
-    assert (await api.get("/partners", headers=as_user(world.dana))).json() == []
+    assert (await api.get("/partners", headers=as_user(world.dana))).json()["items"] == []
     assert (await api.get(f"/partners/{world.partner.id}", headers=as_user(world.dana))).status_code == 404

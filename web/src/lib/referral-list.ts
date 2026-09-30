@@ -3,6 +3,7 @@
 // erroring, since URLs get hand-edited) and defines the built-in views.
 import type { paths } from "@/lib/api/schema";
 import type { ReferralStatus } from "@/lib/api/types";
+import { list, one, UUID, type ListView } from "@/lib/list-views";
 
 export type ApiQuery = NonNullable<paths["/referrals"]["get"]["parameters"]["query"]>;
 type Sort = NonNullable<ApiQuery["sort"]>;
@@ -16,7 +17,7 @@ export const STALE_OPTIONS = [14, 30, 60, 90];
 /** Table columns. `sort` is the API sort key, for the sortable ones. */
 export const COLUMNS = [
   { id: "referred_date", label: "Referred", sort: "referred_date" },
-  { id: "client", label: "Client", sort: "client_name" },
+  { id: "client", label: "Client", sort: "client_name", locked: true }, // the row's link; always shown
   { id: "partner", label: "Partner" },
   { id: "line", label: "Line" },
   { id: "status", label: "Status", sort: "status" },
@@ -30,13 +31,8 @@ export const DEFAULT_SORT: Sort = "-referred_date";
 
 type Params = Record<string, string | string[] | undefined>;
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const SORTS = new Set<string>(COLUMNS.flatMap((c) => ("sort" in c ? [c.sort, `-${c.sort}`] : [])));
-
-const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-const list = <T extends string>(v: string | string[] | undefined, allowed: readonly T[]) =>
-  (one(v) ?? "").split(",").filter((x): x is T => (allowed as readonly string[]).includes(x));
 
 /** Read the list state from the page's search params. */
 export function parseListParams(params: Params) {
@@ -63,16 +59,6 @@ export function parseListParams(params: Params) {
   };
   return { query, page, cols: cols.length ? cols : DEFAULT_COLUMNS };
 }
-
-/** A query string's view-defining part (no page), in a stable order, for "is this view active?". */
-export function viewKey(query: string): string {
-  const p = new URLSearchParams(query);
-  p.delete("page");
-  p.sort();
-  return p.toString();
-}
-
-export type ListView = { id: string; name: string; query: string; saved?: boolean };
 
 /** Views everyone gets. Dates are the agency's (Arizona) today. */
 export function builtInViews(today: string): ListView[] {

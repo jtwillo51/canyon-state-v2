@@ -11,7 +11,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Partners */
+        /**
+         * List Partners
+         * @description Partners with their referral numbers for the period: filtered, sorted and paged.
+         */
         get: operations["list_partners_partners_get"];
         put?: never;
         post?: never;
@@ -410,6 +413,17 @@ export interface components {
             /** Production */
             production: components["schemas"]["ProductionOut"][];
         };
+        /** PartnerPage */
+        PartnerPage: {
+            /** Items */
+            items: components["schemas"]["PartnerRow"][];
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
         /** PartnerRef */
         PartnerRef: {
             /**
@@ -421,6 +435,55 @@ export interface components {
             name: string;
             /** Business Name */
             business_name: string;
+        };
+        /** PartnerRow */
+        PartnerRow: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "Loan officer" | "Realtor" | "Financial advisor" | "Other";
+            /** Type Other */
+            type_other: string | null;
+            /** Business Name */
+            business_name: string;
+            /** Phone */
+            phone: string;
+            /** Email */
+            email: string;
+            /** Territory */
+            territory: string;
+            primary_rep: components["schemas"]["UserRef"] | null;
+            /** Do Not Contact */
+            do_not_contact: boolean;
+            /** Sensitive Items */
+            sensitive_items: string;
+            /** Production */
+            production: components["schemas"]["ProductionOut"][];
+            stats: components["schemas"]["PartnerStats"];
+        };
+        /**
+         * PartnerStats
+         * @description A partner's referral numbers for the chosen period (referrals referred in it).
+         */
+        PartnerStats: {
+            /** Referrals */
+            referrals: number;
+            /** Bound */
+            bound: number;
+            /** Close Rate */
+            close_rate: number | null;
+            /** Bound Premium */
+            bound_premium: number;
+            /** Last Referred */
+            last_referred: string | null;
         };
         /** ProductionOut */
         ProductionOut: {
@@ -588,7 +651,18 @@ export type $defs = Record<string, never>;
 export interface operations {
     list_partners_partners_get: {
         parameters: {
-            query?: never;
+            query?: {
+                type?: ("Loan officer" | "Realtor" | "Financial advisor" | "Other")[];
+                primary_rep_id?: string | null;
+                unassigned?: boolean | null;
+                do_not_contact?: boolean | null;
+                no_referrals?: boolean | null;
+                q?: string | null;
+                period?: "r12" | "ytd" | "all";
+                sort?: "name" | "-name" | "referrals" | "-referrals" | "bound" | "-bound" | "close_rate" | "-close_rate" | "bound_premium" | "-bound_premium" | "last_referred" | "-last_referred";
+                limit?: number;
+                offset?: number;
+            };
             header?: {
                 "x-dev-user"?: string | null;
             };
@@ -603,7 +677,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PartnerOut"][];
+                    "application/json": components["schemas"]["PartnerPage"];
                 };
             };
             /** @description Validation Error */

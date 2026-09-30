@@ -5,15 +5,15 @@ import { X } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
-import { deleteView, saveView } from "@/app/referrals/actions";
+import { deleteView, saveView, type ListName } from "@/app/view-actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { viewKey, type ListView } from "@/lib/referral-list";
+import { viewKey, type ListView } from "@/lib/list-views";
 import { useListParams } from "@/lib/use-list-params";
 
-export function ViewTabs({ views }: { views: ListView[] }) {
+export function ViewTabs({ views, list, basePath }: { views: ListView[]; list: ListName; basePath: string }) {
   const { params } = useListParams();
   const current = viewKey(params.toString());
   const matching = views.find((v) => viewKey(v.query) === current);
@@ -26,7 +26,7 @@ export function ViewTabs({ views }: { views: ListView[] }) {
         return (
           <span key={v.id} className="group inline-flex items-center">
             <Link
-              href={v.query ? `/referrals?${v.query}` : "/referrals"}
+              href={v.query ? `${basePath}?${v.query}` : basePath}
               aria-current={active ? "page" : undefined}
               className={`rounded-md px-2.5 py-1 text-sm ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
             >
@@ -41,7 +41,7 @@ export function ViewTabs({ views }: { views: ListView[] }) {
           Save view
         </Button>
       )}
-      <SaveViewDialog open={saving} query={new URLSearchParams(params.toString())} onClose={() => setSaving(false)} />
+      <SaveViewDialog list={list} open={saving} query={new URLSearchParams(params.toString())} onClose={() => setSaving(false)} />
     </nav>
   );
 }
@@ -61,7 +61,7 @@ function DeleteView({ id, name }: { id: string; name: string }) {
   );
 }
 
-function SaveViewDialog({ open, query, onClose }: { open: boolean; query: URLSearchParams; onClose: () => void }) {
+function SaveViewDialog({ list, open, query, onClose }: { list: ListName; open: boolean; query: URLSearchParams; onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   query.delete("page");
@@ -75,7 +75,7 @@ function SaveViewDialog({ open, query, onClose }: { open: boolean; query: URLSea
             e.preventDefault();
             const name = String(new FormData(e.currentTarget).get("name") ?? "").trim();
             start(async () => {
-              const result = await saveView(name, query.toString());
+              const result = await saveView(list, name, query.toString());
               if (result.ok) {
                 setError(null);
                 onClose();

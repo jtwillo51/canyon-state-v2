@@ -71,6 +71,59 @@ class PartnerOut(Schema):
     production: list[ProductionOut]
 
 
+class PartnerStats(BaseModel):
+    """A partner's referral numbers for the chosen period (referrals referred in it)."""
+
+    referrals: int  # team-wide
+    bound: int  # team-wide
+    # bound / referrals, by count. PLACEHOLDER definition: how the agency measures close rate is still
+    # open (FIELD_QUESTIONS #2). Null when there were no referrals.
+    close_rate: float | None
+    # Money is scoped like v1: admins see the partner's total, a rep only referrals they're credited on.
+    bound_premium: Money
+    last_referred: date | None  # most recent referral, any period, team-wide
+
+
+class PartnerRow(PartnerOut):
+    stats: PartnerStats
+
+
+class PartnerPage(BaseModel):
+    items: list[PartnerRow]
+    total: int
+    limit: int
+    offset: int
+
+
+Period = Literal["r12", "ytd", "all"]  # last 12 months, year to date (Arizona), all time
+
+PartnerSort = Literal[
+    "name", "-name",
+    "referrals", "-referrals",
+    "bound", "-bound",
+    "close_rate", "-close_rate",
+    "bound_premium", "-bound_premium",
+    "last_referred", "-last_referred",
+]  # fmt: skip
+
+
+class PartnerQuery(BaseModel):
+    """Filters, sort, period and page for GET /partners. Unknown keys are refused."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    type: list[PartnerType] = []
+    primary_rep_id: uuid.UUID | None = None
+    unassigned: bool | None = None  # no primary rep
+    do_not_contact: bool | None = None
+    no_referrals: bool | None = None  # none in the period
+    q: str | None = Field(default=None, max_length=100)  # name or business contains
+    period: Period = "r12"
+    sort: PartnerSort = "-referrals"
+    limit: int = Field(default=50, ge=1, le=200)
+    offset: int = Field(default=0, ge=0)
+
+
 class StepOut(Schema):
     step: ReferralStep
     rep: UserRef

@@ -4,9 +4,10 @@ import Link from "next/link";
 import { ChooseViewer } from "@/components/choose-viewer";
 import { ReferralFilters } from "@/components/referral/referral-filters";
 import { ReferralGrid } from "@/components/referral/referral-grid";
-import { ViewTabs } from "@/components/referral/view-tabs";
+import { ViewTabs } from "@/components/list/view-tabs";
 import { agencyToday } from "@/lib/format";
-import { builtInViews, PAGE_SIZE, parseListParams, type ListView } from "@/lib/referral-list";
+import type { ListView } from "@/lib/list-views";
+import { builtInViews, PAGE_SIZE, parseListParams } from "@/lib/referral-list";
 import { getApi } from "@/lib/viewer";
 
 export const metadata: Metadata = { title: "Referrals" };
@@ -49,7 +50,7 @@ export default async function ReferralsPage({ searchParams }: PageProps<"/referr
           {me.data.role === "rep" && " you're credited on"}
         </p>
       </div>
-      <ViewTabs views={views} />
+      <ViewTabs views={views} list="referrals" basePath="/referrals" />
       {/* Only admins filter by rep: a rep's list is already just theirs. */}
       <ReferralFilters reps={me.data.role === "admin" ? reps.data : null} />
       <ReferralGrid rows={items} visible={cols} sort={query.sort ?? "-referred_date"} today={today} />

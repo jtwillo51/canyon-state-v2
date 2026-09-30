@@ -234,3 +234,20 @@ still open with the agency (FIELD_QUESTIONS #1). These rules are decided for the
 - **Error-path hygiene:** after a failed insert the endpoint rolls the session back before raising, so the
   session is never left unusable.
 - Redundant index dropped in review: the unique `(user_id, list, name)` index already serves lookups by user.
+
+## Partners list (2026-09-30)
+
+- **Partner facts plus referral numbers** for a period (last 12 months by default; year to date; all time):
+  referrals, bound, close rate, bound premium, last referral date. Sortable, filterable (type, primary rep,
+  unassigned, do-not-contact, no referrals in the period, name/business search), paged, with built-in views
+  (Most bound, Best close rate, No referrals in 12 months, No primary rep) and saved views.
+- **v1's visibility rule for numbers: counts are team-wide, money is scoped.** Every rep sees how many
+  referrals and binds a shared partner produced; a rep's bound premium counts only referrals they're
+  credited on, and the column says "Your bound premium". A test pins it (and caught its removal).
+- **Close rate = bound ÷ referred, by count** among referrals referred in the period. A placeholder until the
+  agency answers FIELD_QUESTIONS #2; labeled as such in the code and under the table.
+- **One aggregate query:** a `GROUP BY partner` subquery over referrals using Postgres `FILTER (WHERE …)` for
+  the per-period counts, left-joined to partners so partners with no referrals still appear with zeros.
+- **Shared list building blocks** (`components/list/`: `DataGrid`, `ViewTabs`, `Chips`; `lib/list-views.ts`),
+  used by both lists; each list only defines its columns, URL parsing and built-in views. Scoping helpers
+  moved to `app/scoping.py` and LIKE-escaping to `app/search.py`, shared by both routers.
