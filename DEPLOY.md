@@ -4,8 +4,10 @@ Three free services: **Neon** (Postgres), **Render** (the FastAPI API) and **Ver
 The demo runs in `DEMO_MODE`: a "View as" switcher alongside sign-in, a banner saying the data is
 fictional, and a nightly reseed that undoes whatever visitors change.
 
-> **Synthetic data only.** Demo mode has no real sign-in. Never point it at a database that holds the
-> agency's real data.
+> **Synthetic data only.** In demo mode anyone can act as anyone through "View as" (that's the point of the
+> demo). Never point it at a database that holds the agency's real data.
+
+Order matters: the database first (and seeded), then the API, then the web app.
 
 ## 1. Database: Neon
 
@@ -29,7 +31,8 @@ Then run the **Reseed demo** workflow once by hand (Actions tab → Reseed demo 
 gh workflow run reseed-demo.yml --repo jtwillo51/canyon-state-v2
 ```
 
-It migrates the database and loads the synthetic seed. From then on it runs nightly at 3 am Arizona time.
+It migrates the database, loads the synthetic seed, and runs the jobs once (so there are notifications to show).
+From then on it runs nightly at 3 am Arizona time.
 
 ## 3. API: Render
 
@@ -38,8 +41,15 @@ It migrates the database and loads the synthetic seed. From then on it runs nigh
 3. When asked for `DATABASE_URL`, paste the Neon connection string. Deploy.
 4. Check `https://<your-service>.onrender.com/health` returns `{"status":"ok","database":"ok"}`.
 
-The free plan sleeps after 15 idle minutes; the next request takes about a minute to wake it. Open the
-link yourself shortly before sending it to someone.
+The free plan sleeps after 15 idle minutes; the next request takes about a minute to wake it. To keep it awake
+during working hours, set the repository variable (not a secret; the address is public anyway):
+
+```bash
+gh variable set DEMO_API_URL --repo jtwillo51/canyon-state-v2 --body https://<your-service>.onrender.com
+```
+
+The **Keep demo warm** workflow then pings it every 10 minutes, 7 am to 7 pm Arizona time on weekdays.
+Outside those hours, open the link yourself a minute before sending it.
 
 ## 4. Web: Vercel
 

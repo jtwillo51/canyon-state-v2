@@ -1,0 +1,24 @@
+# Keep the demo API awake during Arizona working hours. Render's free plan sleeps after 15 idle minutes and
+# takes about a minute to wake, which is a poor first impression for someone opening the link cold.
+#
+# Every 10 minutes from 7 am to 7 pm Arizona time (14:00-02:00 UTC), Monday to Friday. Round the clock would
+# use more than a private repo's free Actions minutes; working hours is about 2,000 minutes a month.
+# Needs the repository variable DEMO_API_URL (e.g. https://canyon-state-api.onrender.com); does nothing without it.
+name: Keep demo warm
+
+on:
+  schedule:
+    - cron: "*/10 14-23 * * 1-5"
+    - cron: "*/10 0-1 * * 2-6"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    if: vars.DEMO_API_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping the API's health check
+        run: curl --silent --show-error --fail --max-time 120 "${{ vars.DEMO_API_URL }}/health"
