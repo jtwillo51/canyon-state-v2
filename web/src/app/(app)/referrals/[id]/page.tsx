@@ -1,14 +1,15 @@
-import { ChangeHistory } from "@/components/history/change-history";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ChooseViewer } from "@/components/choose-viewer";
+import { ChangeHistory } from "@/components/history/change-history";
 import { LogActivity } from "@/components/referral/log-activity";
 import { ReferralPolicyFields } from "@/components/referral/referral-fields";
 import { Timeline } from "@/components/referral/timeline";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Unavailable } from "@/components/unavailable";
 import { agencyToday, blockedOr, day } from "@/lib/format";
 import { buildTimeline } from "@/lib/timeline";
 import { getApi } from "@/lib/viewer";
@@ -31,8 +32,10 @@ export default async function ReferralPage({ params }: PageProps<"/referrals/[id
   ]);
   // The API returns 404 for someone else's referral too, so it's indistinguishable from "doesn't exist".
   if (referral.response.status === 404 || referral.response.status === 422) notFound();
+  // Only the referral itself and who's viewing are essential; every other section degrades on its own
+  // (a notice in its place) so one slow or failed call can't take the whole page down.
   const r = referral.data;
-  if (!r || !activities.data || !history.data || !me.data || !team.data || !carriers.data) throw new Error("Couldn't load this referral");
+  if (!r || !me.data) throw new Error("Couldn't load this referral");
 
   return (
     <div className="space-y-6">
@@ -61,7 +64,7 @@ export default async function ReferralPage({ params }: PageProps<"/referrals/[id
             <CardTitle>Policy</CardTitle>
           </CardHeader>
           <CardContent>
-            <ReferralPolicyFields referral={r} carriers={carriers.data} isAdmin={me.data.role === "admin"} />
+            <ReferralPolicyFields referral={r} carriers={carriers.data ?? [r.carrier]} isAdmin={me.data.role === "admin"} />
           </CardContent>
         </Card>
         <Card>
@@ -79,18 +82,23 @@ export default async function ReferralPage({ params }: PageProps<"/referrals/[id
         <h2 className="text-lg font-semibold">Timeline</h2>
         {/* key: switching viewer remounts the form, so "who made contact" defaults to the new viewer
             and nothing typed as someone else carries over. */}
-        <LogActivity
-          key={me.data.id}
-          referralId={r.id}
-          referredDate={r.referred_date}
-          today={agencyToday()}
-          viewerId={me.data.id}
-          team={team.data}
-        />
-        <Timeline entries={buildTimeline(r, activities.data)} />
+        {team.data ? (
+          <LogActivity
+            key={me.data.id}
+            referralId={r.id}
+            referredDate={r.referred_date}
+            today={agencyToday()}
+            viewerId={me.data.id}
+            team={team.data}
+          />
+        ) : (
+          <Unavailable what="the team list for logging activity" />
+        )}
+        {!activities.data && <Unavailable what="logged activity (the pipeline steps below are complete)" />}
+        <Timeline entries={buildTimeline(r, activities.data ?? [])} />
       </section>
 
-      <ChangeHistory events={history.data} />
+      {history.data ? <ChangeHistory events={history.data} /> : <Unavailable what="the change history" />}
     </div>
   );
 }

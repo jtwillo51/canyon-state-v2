@@ -1,12 +1,13 @@
-import { ChangeHistory } from "@/components/history/change-history";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ChooseViewer } from "@/components/choose-viewer";
+import { ChangeHistory } from "@/components/history/change-history";
 import { DoNotContactToggle, DoNotDiscuss, PartnerContactFields } from "@/components/partner/partner-fields";
 import { LocalReferralGrid } from "@/components/referral/referral-grid";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Unavailable } from "@/components/unavailable";
 import { agencyToday, bigMoney } from "@/lib/format";
 import { getApi } from "@/lib/viewer";
 
@@ -26,11 +27,11 @@ export default async function PartnerPage({ params }: PageProps<"/partners/[id]"
     api.GET("/users/me"),
     api.GET("/users/reps"),
   ]);
-  const historyData = history.data;
   if (partnerRes.response.status === 404 || partnerRes.response.status === 422) notFound();
+  // Only the partner and who's viewing are essential; every other section degrades on its own.
   const partner = partnerRes.data;
   const referrals = referralsRes.data?.items;
-  if (!partner || !referrals || !historyData || !me.data || !reps.data) throw new Error("Couldn't load this partner");
+  if (!partner || !me.data) throw new Error("Couldn't load this partner");
 
   return (
     <div className="space-y-6">
@@ -60,7 +61,7 @@ export default async function PartnerPage({ params }: PageProps<"/partners/[id]"
             <CardTitle>Contact</CardTitle>
           </CardHeader>
           <CardContent>
-            <PartnerContactFields partner={partner} reps={reps.data} isAdmin={me.data.role === "admin"} />
+            <PartnerContactFields partner={partner} reps={reps.data ?? []} isAdmin={me.data.role === "admin"} />
           </CardContent>
         </Card>
         <Card>
@@ -84,10 +85,14 @@ export default async function PartnerPage({ params }: PageProps<"/partners/[id]"
 
       <section>
         <h2 className="mb-2 text-lg font-semibold">Referrals</h2>
-        <LocalReferralGrid rows={referrals} visible={["referred_date", "client", "line", "status", "premium", "last_touch"]} today={agencyToday()} />
+        {referrals ? (
+          <LocalReferralGrid rows={referrals} visible={["referred_date", "client", "line", "status", "premium", "last_touch"]} today={agencyToday()} />
+        ) : (
+          <Unavailable what="this partner's referrals" />
+        )}
       </section>
 
-      <ChangeHistory events={historyData} />
+      {history.data ? <ChangeHistory events={history.data} /> : <Unavailable what="the change history" />}
     </div>
   );
 }
