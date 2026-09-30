@@ -13,6 +13,8 @@ export function ViewAsSelect({ users, current }: { users: User[]; current: strin
       id="view-as"
       name="userId"
       size="sm"
+      // It sits on the blue header: light text, a faint fill and border, a light chevron.
+      className="[&_select]:border-brand-line [&_select]:bg-white/5 [&_select]:text-white [&_svg]:text-brand-mute"
       defaultValue={current ?? ""}
       onChange={(e) => e.currentTarget.form?.requestSubmit()}
     >

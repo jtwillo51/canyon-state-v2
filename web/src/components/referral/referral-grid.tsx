@@ -21,7 +21,7 @@ function makeColumns(today: string) {
       id: "client",
       header: LABEL.client,
       cell: (i) => (
-        <Link href={`/referrals/${i.row.original.id}`} className="font-medium hover:underline">
+        <Link href={`/referrals/${i.row.original.id}`} className="font-medium text-link hover:underline">
           {i.getValue()}
         </Link>
       ),
@@ -30,7 +30,7 @@ function makeColumns(today: string) {
       id: "partner",
       header: LABEL.partner,
       cell: (i) => (
-        <Link href={`/partners/${i.row.original.partner.id}`} className="hover:underline">
+        <Link href={`/partners/${i.row.original.partner.id}`} className="text-link hover:underline">
           {i.getValue()}
         </Link>
       ),
@@ -40,7 +40,7 @@ function makeColumns(today: string) {
     helper.accessor("premium", {
       id: "premium",
       header: LABEL.premium,
-      cell: (i) => <span className="tabular-nums">{money(i.getValue())}</span>,
+      cell: (i) => <span className="font-mono">{money(i.getValue())}</span>,
     }),
     helper.accessor("last_touch", {
       id: "last_touch",
@@ -51,8 +51,9 @@ function makeColumns(today: string) {
   ]);
 }
 
-type Props = { rows: Referral[]; visible: ColumnId[]; sort: string; today: string };
+type Props = { rows: Referral[]; visible: ColumnId[]; sort: readonly string[]; today: string };
 
+/** The Referrals list: sorted by the API, state in the URL. */
 export function ReferralGrid({ rows, visible, sort, today }: Props) {
   return (
     <DataGrid
@@ -64,6 +65,23 @@ export function ReferralGrid({ rows, visible, sort, today }: Props) {
       defaultSort={DEFAULT_SORT}
       rowId={(r) => r.id}
       empty="No referrals match these filters."
+    />
+  );
+}
+
+/** A small, complete set of referrals (e.g. one partner's), sorted in the browser. */
+export function LocalReferralGrid({ rows, visible, today }: { rows: Referral[]; visible: ColumnId[]; today: string }) {
+  return (
+    <DataGrid
+      mode="local"
+      rows={rows}
+      columns={makeColumns(today)}
+      meta={COLUMNS}
+      visible={visible}
+      sort={["-referred_date"]}
+      defaultSort={["-referred_date"]}
+      rowId={(r) => r.id}
+      empty="No referrals you can see."
     />
   );
 }

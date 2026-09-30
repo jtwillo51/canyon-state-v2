@@ -8,9 +8,10 @@ from datetime import date
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, field_validator
 
 from app.models import ContactMethod, LineOfBusiness, ListName, PartnerType, ReferralStatus, ReferralStep, Role
+from app.sorting import check_sort
 
 # Money is Numeric in the database and a JSON number on the wire (Pydantic's default is a string).
 Money = Annotated[Decimal, PlainSerializer(float, return_type=float)]
@@ -117,9 +118,15 @@ class PartnerQuery(BaseModel):
     unassigned: bool | None = None  # no primary rep
     do_not_contact: bool | None = None
     no_referrals: bool | None = None  # none in the period
+    min_referrals: int | None = Field(default=None, ge=1, le=1000)  # e.g. rank only partners with 3+
     q: str | None = Field(default=None, max_length=100)  # name or business contains
     period: Period = "r12"
-    sort: PartnerSort = "-referrals"
+    sort: list[PartnerSort] = ["-referrals"]  # several: sort by the first, then the next (?sort=-a&sort=b)
+
+    @field_validator("sort")
+    @classmethod
+    def _at_most_three_each_once(cls, keys: list[str]) -> list[str]:
+        return check_sort(keys)
     limit: int = Field(default=50, ge=1, le=200)
     offset: int = Field(default=0, ge=0)
 
@@ -172,7 +179,12 @@ class ReferralQuery(BaseModel):
     bound_to: date | None = None
     has_premium: bool | None = None
     q: str | None = Field(default=None, max_length=100)  # client name contains
-    sort: ReferralSort = "-referred_date"
+    sort: list[ReferralSort] = ["-referred_date"]  # several: sort by the first, then the next
+
+    @field_validator("sort")
+    @classmethod
+    def _at_most_three_each_once(cls, keys: list[str]) -> list[str]:
+        return check_sort(keys)
     limit: int = Field(default=50, ge=1, le=200)
     offset: int = Field(default=0, ge=0)
 
@@ -225,6 +237,62 @@ class ReferralPatch(BaseModel):
     line_of_business: LineOfBusiness | None = None
     carrier_id: uuid.UUID | None = None
     premium: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=2)
+
+
+class Metric(BaseModel):
+    """One progress number for the month so far, with its comparisons.
+
+    Units: clients are a count, sales are dollars, close rate is a fraction (0.64 = 64%); a close-rate
+    difference is in fraction points (0.05 = 5 pts).
+    """
+
+    value: float | None  # None: nothing to measure yet (e.g. no referral decided, so no close rate)
+    goal: float | None
+    vs_last_month: float | None  # value minus the same point last month
+    vs_team: float | None  # value minus the average of the other reps (rep rows only)
+    vs_team_pct: float | None  # the same as a relative difference, 0.38 = 38% above the others
+
+
+class RepProgress(BaseModel):
+    rep: UserRef
+    clients: Metric
+    sales: Metric
+    close_rate: Metric
+
+
+class CompanyProgress(BaseModel):
+    """Company totals, for admins."""
+
+    clients: Metric
+    sales: Metric
+    close_rate: Metric
+
+
+class CompanyShare(BaseModel):
+    """What a rep sees of the company: progress as a share of goal, never company dollars or counts."""
+
+    clients_pct_of_goal: float | None
+    sales_pct_of_goal: float | None
+    close_rate: float | None  # already a percentage, so shown as is
+    close_rate_goal: float | None
+
+
+class ProgressOut(BaseModel):
+    month: str  # "2026-09"
+    through: date  # today (Arizona)
+    compared_through: date  # the same point last month
+    company: CompanyProgress | None  # admins only
+    company_share: CompanyShare | None  # reps only
+    reps: list[RepProgress]  # admins: every active rep; a rep: only themselves
+
+
+class RepGoalIn(BaseModel):
+    clients: int = Field(ge=0, le=10_000)
+    sales: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
+
+
+class CompanyGoalIn(BaseModel):
+    close_rate: Decimal | None = Field(ge=0, le=1, max_digits=5, decimal_places=4)
 
 
 class SavedViewOut(Schema):

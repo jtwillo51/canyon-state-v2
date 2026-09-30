@@ -11,5 +11,10 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export async function viewAs(formData: FormData) {
   const id = formData.get("userId");
   if (typeof id !== "string" || !UUID.test(id)) return;
-  (await cookies()).set(VIEWER_COOKIE, id, { httpOnly: true, sameSite: "lax", path: "/" });
+  (await cookies()).set(VIEWER_COOKIE, id, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    secure: process.env.NODE_ENV === "production", // HTTPS only once deployed
+  });
 }

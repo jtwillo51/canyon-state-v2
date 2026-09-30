@@ -16,6 +16,7 @@ from app.pipeline import OPEN, PipelineError, apply_move, check_move
 from app.policy import mask
 from app.scoping import credited_to, referral_scope
 from app.search import contains
+from app.sorting import order_by
 from app.schemas import ActivityIn, ActivityOut, ReferralOut, ReferralPage, ReferralPatch, ReferralQuery, StatusChange
 
 router = APIRouter(prefix="/referrals", tags=["referrals"])
@@ -78,11 +79,14 @@ def _filters(f: ReferralQuery) -> list[ColumnElement[bool]]:
 async def list_referrals(viewer: Viewer, db: DB, f: Annotated[ReferralQuery, Query()]) -> ReferralPage:
     """A filtered, sorted page of the referrals this viewer may see."""
     where = [*referral_scope(viewer), *_filters(f)]  # scope applies to the count too, not just the page
-    key = f.sort.removeprefix("-")
-    column = _SORT_COLUMNS[key]
-    order = (column.desc() if f.sort.startswith("-") else column.asc()).nulls_last()
 
-    page_stmt = visible_referrals(viewer).where(*where).order_by(order, Referral.id).limit(f.limit).offset(f.offset)
+    page_stmt = (
+        visible_referrals(viewer)
+        .where(*where)
+        .order_by(*order_by(f.sort, _SORT_COLUMNS), Referral.id)
+        .limit(f.limit)
+        .offset(f.offset)
+    )
     count_stmt = select(func.count()).select_from(Referral).where(*where)
     referrals = (await db.execute(page_stmt)).scalars().all()
     total = (await db.execute(count_stmt)).scalar_one()

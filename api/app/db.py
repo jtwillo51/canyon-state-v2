@@ -8,7 +8,7 @@ from app.config import settings
 from app.models import SoftDelete
 
 # One engine per process: it owns the connection pool.
-engine = create_async_engine(settings.database_url)
+engine = create_async_engine(settings.sqlalchemy_url, connect_args=settings.connect_args)
 
 # expire_on_commit=False: objects stay readable after commit. Under async there is no lazy
 # reload, so an expired attribute would raise instead of quietly re-querying.

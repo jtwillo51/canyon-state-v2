@@ -5,7 +5,8 @@ Everything comes from one seeded random generator, so every run produces the sam
 (UUIDs included); only the dates move, ending on the day you seed.
 
 Run from api/:  uv run python -m scripts.seed
-Refuses to run unless DATABASE_URL points at this machine.
+Refuses to run unless DATABASE_URL points at this machine, or DEMO_MODE is on (the public demo,
+which only ever holds synthetic data).
 """
 
 import asyncio
@@ -20,7 +21,18 @@ from sqlalchemy.engine import make_url
 
 from app.config import settings
 from app.db import SessionLocal, engine
-from app.models import Activity, Base, Carrier, Partner, PartnerProduction, Referral, ReferralStepCredit, User
+from app.models import (
+    Activity,
+    Base,
+    Carrier,
+    CompanyGoal,
+    Partner,
+    PartnerProduction,
+    Referral,
+    ReferralStepCredit,
+    RepGoal,
+    User,
+)
 
 rng = Random(20260918)
 
@@ -190,8 +202,18 @@ def build() -> list[Base]:
 
     activities = build_activities(referrals, steps)
 
+    # Monthly goals, sized so this synthetic agency lands near 100%: some reps ahead, some behind. Fixed values,
+    # not drawn from rng, so adding them didn't shift any id.
+    goals = [
+        RepGoal(id=uuid.UUID(int=i + 1, version=4), user_id=rep.id, clients=clients, sales=Decimal(sales))
+        for i, (rep, (clients, sales)) in enumerate(
+            zip(reps, [(4, 9000), (3, 7000), (3, 6000), (3, 6000), (2, 5000), (2, 4000)], strict=True)
+        )
+    ]
+    company_goal = CompanyGoal(id=uuid.UUID(int=100, version=4), close_rate=Decimal("0.60"))
+
     # Parents before children, so foreign keys are satisfied as rows go in.
-    return [*users, *carriers, *partners, *production, *referrals, *steps, *activities]
+    return [*users, *carriers, *partners, *production, *referrals, *steps, *activities, *goals, company_goal]
 
 
 ACTIVITY_NOTES = [
@@ -238,8 +260,8 @@ def build_activities(referrals: list[Referral], steps: list[ReferralStepCredit])
 
 async def main() -> None:
     url = make_url(settings.database_url)
-    if url.host not in ("localhost", "127.0.0.1", "::1"):
-        sys.exit(f"Refusing to seed: DATABASE_URL points at {url.host}, not this machine.")
+    if url.host not in ("localhost", "127.0.0.1", "::1") and not settings.demo_mode:
+        sys.exit(f"Refusing to seed: DATABASE_URL points at {url.host}, not this machine, and DEMO_MODE is off.")
 
     rows = build()
     tables = ", ".join(t.name for t in Base.metadata.sorted_tables)

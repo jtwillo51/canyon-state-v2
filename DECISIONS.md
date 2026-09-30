@@ -270,3 +270,87 @@ still open with the agency (FIELD_QUESTIONS #1). These rules are decided for the
   cancels; the new value shows optimistically and, if refused, the editor reopens with what was typed and the
   API's reason. Fields the viewer can't change say why ("admins change this"). Edits live on the partner and
   referral pages; the lists stay read-only for now.
+
+## Public demo deployment (2026-09-30)
+
+- **A labeled demo on synthetic data, before real sign-in.** `DEMO_MODE` keeps the "View as" switcher (so a
+  visitor can flip between an admin and a rep and watch scoping work), shows a "fictional data, resets
+  nightly" banner, and lets the seed script run against the hosted database. Real sign-in is Stage 3; demo
+  mode must never point at real data.
+- **All free:** Neon Postgres (doesn't expire), Render free web service for the API (sleeps after 15 idle
+  minutes; about a minute to wake), Vercel for the web app. Steps in `DEPLOY.md`.
+- **Neon URLs work as pasted:** `postgresql://…?sslmode=require` becomes `postgresql+asyncpg://` with
+  `ssl` in `connect_args` (asyncpg rejects libpq options); a pooler host disables asyncpg's prepared-statement
+  cache. Tested in `tests/test_config.py`.
+- **Migrations run in Render's build step** (the free plan has no pre-deploy step).
+- **Nightly reseed via a scheduled GitHub Actions workflow** (free; Render cron jobs aren't), using the
+  `DEMO_DATABASE_URL` secret. It undoes visitors' changes and keeps "last 30 days" current.
+- The viewer cookie is `Secure` in production (HTTPS only).
+
+## Progress and goals (2026-09-30)
+
+- **Three numbers, this month so far:** **clients** = referrals bound; **sales** = their bound premium; both
+  credited to the rep with the **bind** credit, so reps' totals add up to the company's. **Close rate** = of
+  referrals **decided** this month (bound or lost), the share bound, credited to the rep who **introduced**
+  them. Close rate stays a placeholder until FIELD_QUESTIONS #2.
+- **"Vs last month" compares the same span:** on the 29th, 1-29 September vs 1-29 August (capped at a short
+  month's end). **"Vs everyone"** = the average of the *other* active reps (reps with no close rate yet are
+  skipped for that average).
+- **Goals:** each rep has monthly clients and sales goals (carry over until changed); the company's goal is
+  their sum. Close rate has one company target (a rate doesn't add up). Admins edit goals inline on the
+  dashboard; the API refuses anyone else. Migration 5: `rep_goals`, and `company_goals` constrained to one row.
+- **Who sees what (`GET /progress`):** admins get company totals and every active rep. A rep gets only their own
+  row and the company as **shares of goal** (`company_share`), never company or colleagues' counts or
+  dollars. Their sales-vs-team arrives only as a percentage (`vs_team_pct`); a test pins it (and caught
+  its removal).
+- **Where:** a new **Dashboard** (`/`, `/dashboard`) and a **compact, collapsible strip** under the nav on every
+  page. A **"vs myself / vs everyone" switch** picks the one comparison shown beside each number, on both,
+  shared live and remembered per person (cookies). Company totals always compare with last month; the
+  company has no "everyone", so the admin strip has no switch.
+- ▲ green = better, ▼ red = worse, – = level; close rate moves in points.
+- Seeded goals are sized so the synthetic agency sits near 100% (some reps ahead, some behind).
+
+## Table sorting everywhere (2026-09-30)
+
+- **Every table uses the shared `DataGrid`:** click a header to sort (click again to flip), shift-click
+  another to add it as the next sort, up to 3, with 1/2/3 markers.
+- **Paged lists** (Referrals, Partners, Top partners) sort in the API: `sort` is a list (each column once, at
+  most 3; `app/sorting.py`), carried in the URL as `sort=-close_rate,-referrals` (saved views keep working).
+  **Top partners re-ranks** by the clicked columns. **Small tables** (dashboard reps, a partner's referrals)
+  sort in the browser ("local" mode).
+
+## Top partners (2026-09-30)
+
+- **Its own page** (`/top-partners`): the top 10 referral partners ranked by **close rate, then number of
+  referrals**, over the last 12 months (switchable: year to date, all time), using the Partners list's
+  close-rate definition (bound ÷ referred, a placeholder).
+- **Only partners with 3+ referrals in the period are ranked**, so one lucky bind can't put a partner on top.
+- **Every partner sort now breaks ties on more referrals, then name** (`GET /partners`), so "close rate, then
+  referrals" is simply `sort=-close_rate`; plus a `min_referrals` filter. Tests pin both (and caught the
+  tie-break's removal).
+- Columns: rank, partner, primary rep, referrals, bound, close rate, bound premium. Counts are team-wide;
+  premium follows the existing rule ("Your bound premium" for reps).
+
+## Visual design (2026-09-30)
+
+- **Direction: "A3 copper".** Chosen from mockups of three directions (classic CRM, Sonoran brand, modern minimal),
+  then four variations on the classic CRM (a tidied Salesforce shell, "copper state", a global header with
+  scoreboard, an icon rail with bullet charts). The pick: the global header and scoreboard, in the copper-state
+  colors.
+- **Arizona's flag colors: blue for structure, copper for goals.** Flag blue (`--brand`, `#0b2349`) for the header
+  and primary buttons, warm paper neutrals for the page. **Copper means "measured against a goal" and nothing
+  else:** the active tab, the scoreboard's edge and goal meters, the chosen comparison. Links stay blue. Holding
+  copper to one meaning is what lets it carry meaning.
+- **Type: IBM Plex Sans for words, IBM Plex Mono for numbers** (money, counts, rates, and every right-aligned
+  table column), so figures line up like a scoreboard.
+- **Navigation across the top, no sidebar,** so wide tables get the full width. The progress strip became a
+  dark scoreboard band under it (still collapsible, still scoped: reps see the company only as a share of goal).
+- **The theme lives in `globals.css`:** shadcn's variables point at the palette, plus named tokens (`brand`,
+  `copper`, `link`, `up`, `down`, and their on-dark variants) usable as Tailwind classes (`bg-copper`).
+  Smaller corners (`--radius` 0.375rem) for a crisper, denser look.
+- **Shared `GoalMeter`** (`components/progress/goal-meter.tsx`): counts and money fill toward the goal; a rate
+  is drawn on its own 0-100% scale with a tick at the target.
+- **No search box in the header yet:** it was in the mockup, but a box that does nothing is worse than none. It
+  arrives with the command palette.
+- **Light mode only for now.** Dark mode is an open decision; shadcn's stock `.dark` block is still in
+  `globals.css`, unused.

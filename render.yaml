@@ -1,0 +1,23 @@
+# Render Blueprint: the API as a free web service. The database is Neon's free Postgres (DATABASE_URL);
+# the web app is on Vercel. See DEPLOY.md.
+#
+# DEMO_MODE turns on the "View as" sign-in and lets the nightly job reseed this database.
+# SYNTHETIC DATA ONLY: never point this service at a database holding the agency's real data.
+services:
+  - type: web
+    name: canyon-state-api
+    runtime: python
+    plan: free # sleeps after 15 idle minutes; the first request then takes about a minute
+    rootDir: api
+    # The free plan has no pre-deploy step, so migrations run at the end of the build.
+    buildCommand: pip install uv && uv sync --frozen --no-dev && uv run alembic upgrade head
+    startCommand: uv run fastapi run app/main.py --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false # entered in the Render dashboard, never committed
+      - key: DEMO_MODE
+        value: "true"
+      - key: PYTHON_VERSION
+        value: "3.12.10"

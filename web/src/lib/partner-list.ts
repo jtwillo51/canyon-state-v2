@@ -1,10 +1,11 @@
 // The Partners list's URL state (filters, period, sort, columns, page) and its built-in views.
 // Same pattern as referral-list.ts: the URL is the state, and invalid values are dropped.
 import type { paths } from "@/lib/api/schema";
-import { list, one, UUID, type ListView } from "@/lib/list-views";
+import { list, one, parseSort, UUID, type ListView } from "@/lib/list-views";
 
 export type PartnerApiQuery = NonNullable<paths["/partners"]["get"]["parameters"]["query"]>;
-type Sort = NonNullable<PartnerApiQuery["sort"]>;
+export type PartnerSort = NonNullable<PartnerApiQuery["sort"]>[number];
+type Sort = PartnerSort;
 type Period = NonNullable<PartnerApiQuery["period"]>;
 type PartnerType = NonNullable<PartnerApiQuery["type"]>[number];
 
@@ -32,14 +33,13 @@ export type ColumnId = (typeof COLUMNS)[number]["id"];
 export const DEFAULT_COLUMNS: ColumnId[] = [
   "name", "type", "business", "primary_rep", "referrals", "bound", "close_rate", "bound_premium", "last_referred",
 ];  // prettier-ignore
-export const DEFAULT_SORT: Sort = "-referrals";
+export const DEFAULT_SORT: Sort[] = ["-referrals"];
 
-const SORTS = new Set<string>(COLUMNS.flatMap((c) => ("sort" in c ? [c.sort, `-${c.sort}`] : [])));
+export const SORTS = new Set<string>(COLUMNS.flatMap((c) => ("sort" in c ? [c.sort, `-${c.sort}`] : [])));
 const bool = (v: string | undefined) => (v === "true" ? true : v === "false" ? false : undefined);
 
 export function parsePartnerParams(params: Record<string, string | string[] | undefined>) {
   const page = Math.max(1, Math.floor(Number(one(params.page))) || 1);
-  const sort = one(params.sort);
   const period = one(params.period);
   const rep = one(params.rep);
   const cols = list(params.cols, COLUMNS.map((c) => c.id));
@@ -52,7 +52,7 @@ export function parsePartnerParams(params: Record<string, string | string[] | un
     no_referrals: bool(one(params.no_referrals)),
     q: one(params.q)?.slice(0, 100) || undefined,
     period: PERIODS.some((p) => p.value === period) ? (period as Period) : "r12",
-    sort: sort && SORTS.has(sort) ? (sort as Sort) : DEFAULT_SORT,
+    sort: parseSort<Sort>(params.sort, SORTS, DEFAULT_SORT),
     limit: PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE,
   };
@@ -63,7 +63,7 @@ export function builtInPartnerViews(): ListView[] {
   return [
     { id: "all", name: "All partners", query: "" },
     { id: "top-bound", name: "Most bound", query: "sort=-bound" },
-    { id: "best-rate", name: "Best close rate", query: "no_referrals=false&sort=-close_rate" },
+    { id: "best-rate", name: "Best close rate", query: "no_referrals=false&sort=-close_rate,-referrals" },
     { id: "quiet", name: "No referrals in 12 months", query: "no_referrals=true&sort=name" },
     { id: "unassigned", name: "No primary rep", query: "unassigned=true&sort=name" },
   ];

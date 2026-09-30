@@ -40,7 +40,7 @@ export default async function ReferralPage({ params }: PageProps<"/referrals/[id
         </h1>
         <p className="text-muted-foreground">
           {r.line_of_business} · referred by{" "}
-          <Link href={`/partners/${r.partner.id}`} className="hover:underline">
+          <Link href={`/partners/${r.partner.id}`} className="text-link hover:underline">
             {r.partner.name}
           </Link>{" "}
           on {day(r.referred_date)}

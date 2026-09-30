@@ -16,6 +16,7 @@ from app.models import Partner, Referral, User
 from app.schemas import PartnerOut, PartnerPage, PartnerPatch, PartnerQuery, PartnerRow, PartnerStats
 from app.scoping import referral_scope
 from app.search import contains
+from app.sorting import order_by
 
 router = APIRouter(prefix="/partners", tags=["partners"])
 
@@ -67,6 +68,8 @@ async def list_partners(viewer: Viewer, db: DB, f: Annotated[PartnerQuery, Query
         where.append(Partner.do_not_contact.is_(f.do_not_contact))
     if f.no_referrals is not None:
         where.append(referrals == 0 if f.no_referrals else referrals > 0)
+    if f.min_referrals:
+        where.append(referrals >= f.min_referrals)
     if f.q:
         where.append(or_(contains(Partner.name, f.q), contains(Partner.business_name, f.q)))
 
@@ -78,14 +81,12 @@ async def list_partners(viewer: Viewer, db: DB, f: Annotated[PartnerQuery, Query
         "bound_premium": premium,
         "last_referred": stats.c.last_referred,
     }
-    column = sort_columns[f.sort.removeprefix("-")]
-    order = (column.desc() if f.sort.startswith("-") else column.asc()).nulls_last()
-
     joined = _partners().add_columns(referrals, bound, close_rate, premium, stats.c.last_referred)
     page = (
         joined.outerjoin(stats, stats.c.partner_id == Partner.id)
         .where(*where)
-        .order_by(order, func.lower(Partner.name), Partner.id)
+        # After the requested columns, remaining ties break on more referrals, then name.
+        .order_by(*order_by(f.sort, sort_columns), referrals.desc(), func.lower(Partner.name), Partner.id)
         .limit(f.limit)
         .offset(f.offset)
     )

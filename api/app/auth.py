@@ -22,7 +22,7 @@ async def get_viewer(
     db: DB,
     x_dev_user: Annotated[uuid.UUID | None, Header()] = None,
 ) -> User:
-    if not settings.dev_auth or x_dev_user is None:
+    if not settings.header_auth or x_dev_user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not signed in")
     user = (await db.execute(select(User).where(User.id == x_dev_user, User.active))).scalar_one_or_none()
     if user is None:

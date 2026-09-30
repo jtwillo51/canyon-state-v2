@@ -267,6 +267,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Progress */
+        get: operations["progress_progress_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/goals/reps/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Rep Goal */
+        put: operations["set_rep_goal_goals_reps__user_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/goals/company": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Company Goal */
+        put: operations["set_company_goal_goals_company_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/dev/users": {
         parameters: {
             query?: never;
@@ -363,6 +414,39 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** CompanyGoalIn */
+        "CompanyGoalIn-Input": {
+            /** Close Rate */
+            close_rate: number | string | null;
+        };
+        /** CompanyGoalIn */
+        "CompanyGoalIn-Output": {
+            /** Close Rate */
+            close_rate: string | null;
+        };
+        /**
+         * CompanyProgress
+         * @description Company totals, for admins.
+         */
+        CompanyProgress: {
+            clients: components["schemas"]["Metric"];
+            sales: components["schemas"]["Metric"];
+            close_rate: components["schemas"]["Metric"];
+        };
+        /**
+         * CompanyShare
+         * @description What a rep sees of the company: progress as a share of goal, never company dollars or counts.
+         */
+        CompanyShare: {
+            /** Clients Pct Of Goal */
+            clients_pct_of_goal: number | null;
+            /** Sales Pct Of Goal */
+            sales_pct_of_goal: number | null;
+            /** Close Rate */
+            close_rate: number | null;
+            /** Close Rate Goal */
+            close_rate_goal: number | null;
+        };
         /**
          * DevUserOut
          * @description A person the development "View as" switcher can act as.
@@ -410,6 +494,25 @@ export interface components {
              * @enum {string}
              */
             role: "admin" | "rep";
+        };
+        /**
+         * Metric
+         * @description One progress number for the month so far, with its comparisons.
+         *
+         *     Units: clients are a count, sales are dollars, close rate is a fraction (0.64 = 64%); a close-rate
+         *     difference is in fraction points (0.05 = 5 pts).
+         */
+        Metric: {
+            /** Value */
+            value: number | null;
+            /** Goal */
+            goal: number | null;
+            /** Vs Last Month */
+            vs_last_month: number | null;
+            /** Vs Team */
+            vs_team: number | null;
+            /** Vs Team Pct */
+            vs_team_pct: number | null;
         };
         /** PartnerOut */
         PartnerOut: {
@@ -539,6 +642,25 @@ export interface components {
             /** Verified */
             verified: boolean;
         };
+        /** ProgressOut */
+        ProgressOut: {
+            /** Month */
+            month: string;
+            /**
+             * Through
+             * Format: date
+             */
+            through: string;
+            /**
+             * Compared Through
+             * Format: date
+             */
+            compared_through: string;
+            company: components["schemas"]["CompanyProgress"] | null;
+            company_share: components["schemas"]["CompanyShare"] | null;
+            /** Reps */
+            reps: components["schemas"]["RepProgress"][];
+        };
         /** ReferralOut */
         ReferralOut: {
             /**
@@ -610,6 +732,27 @@ export interface components {
             carrier_id?: string | null;
             /** Premium */
             premium?: number | string | null;
+        };
+        /** RepGoalIn */
+        "RepGoalIn-Input": {
+            /** Clients */
+            clients: number;
+            /** Sales */
+            sales: number | string;
+        };
+        /** RepGoalIn */
+        "RepGoalIn-Output": {
+            /** Clients */
+            clients: number;
+            /** Sales */
+            sales: string;
+        };
+        /** RepProgress */
+        RepProgress: {
+            rep: components["schemas"]["UserRef"];
+            clients: components["schemas"]["Metric"];
+            sales: components["schemas"]["Metric"];
+            close_rate: components["schemas"]["Metric"];
         };
         /** SavedViewIn */
         SavedViewIn: {
@@ -714,9 +857,10 @@ export interface operations {
                 unassigned?: boolean | null;
                 do_not_contact?: boolean | null;
                 no_referrals?: boolean | null;
+                min_referrals?: number | null;
                 q?: string | null;
                 period?: "r12" | "ytd" | "all";
-                sort?: "name" | "-name" | "referrals" | "-referrals" | "bound" | "-bound" | "close_rate" | "-close_rate" | "bound_premium" | "-bound_premium" | "last_referred" | "-last_referred";
+                sort?: ("name" | "-name" | "referrals" | "-referrals" | "bound" | "-bound" | "close_rate" | "-close_rate" | "bound_premium" | "-bound_premium" | "last_referred" | "-last_referred")[];
                 limit?: number;
                 offset?: number;
             };
@@ -830,7 +974,7 @@ export interface operations {
                 bound_to?: string | null;
                 has_premium?: boolean | null;
                 q?: string | null;
-                sort?: "referred_date" | "-referred_date" | "last_touch" | "-last_touch" | "client_name" | "-client_name" | "premium" | "-premium" | "status" | "-status";
+                sort?: ("referred_date" | "-referred_date" | "last_touch" | "-last_touch" | "client_name" | "-client_name" | "premium" | "-premium" | "status" | "-status")[];
                 limit?: number;
                 offset?: number;
             };
@@ -1289,6 +1433,109 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    progress_progress_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_rep_goal_goals_reps__user_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepGoalIn-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepGoalIn-Output"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldErrorOut"];
+                };
+            };
+        };
+    };
+    set_company_goal_goals_company_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompanyGoalIn-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyGoalIn-Output"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldErrorOut"];
                 };
             };
         };

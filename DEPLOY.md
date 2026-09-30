@@ -1,0 +1,57 @@
+# Deploying the public demo
+
+Three free services: **Neon** (Postgres), **Render** (the FastAPI API) and **Vercel** (the Next.js app).
+The demo runs in `DEMO_MODE`: a "View as" switcher instead of sign-in, a banner saying the data is
+fictional, and a nightly reseed that undoes whatever visitors change.
+
+> **Synthetic data only.** Demo mode has no real sign-in. Never point it at a database that holds the
+> agency's real data.
+
+## 1. Database: Neon
+
+1. Sign up at neon.tech and create a project (e.g. `canyon-state-demo`, region US West).
+2. Copy the **direct** connection string (turn "Connection pooling" off in the connect dialog). It looks
+   like `postgresql://user:password@ep-something.us-west-2.aws.neon.tech/neondb?sslmode=require`.
+   The API converts this format itself; paste it as-is.
+
+## 2. Load the demo data (GitHub Actions)
+
+Store the connection string as a repository secret (the command prompts for the value, so it never
+lands in your shell history):
+
+```bash
+gh secret set DEMO_DATABASE_URL --repo jtwillo51/canyon-state-v2
+```
+
+Then run the **Reseed demo** workflow once by hand (Actions tab → Reseed demo → Run workflow), or:
+
+```bash
+gh workflow run reseed-demo.yml --repo jtwillo51/canyon-state-v2
+```
+
+It migrates the database and loads the synthetic seed. From then on it runs nightly at 3 am Arizona time.
+
+## 3. API: Render
+
+1. Sign up at render.com with GitHub and allow access to `canyon-state-v2`.
+2. **New → Blueprint**, pick the repo. Render reads `render.yaml`.
+3. When asked for `DATABASE_URL`, paste the Neon connection string. Deploy.
+4. Check `https://<your-service>.onrender.com/health` returns `{"status":"ok","database":"ok"}`.
+
+The free plan sleeps after 15 idle minutes; the next request takes about a minute to wake it. Open the
+link yourself shortly before sending it to someone.
+
+## 4. Web: Vercel
+
+1. Sign up at vercel.com with GitHub and import `canyon-state-v2`.
+2. Set **Root Directory** to `web`. The framework (Next.js) is detected.
+3. Environment variables:
+   - `API_URL` = your Render URL, e.g. `https://canyon-state-api.onrender.com` (no trailing slash)
+   - `DEMO_MODE` = `true`
+4. Deploy, open the URL, and pick someone in **View as**.
+
+## Updating
+
+Pushing to `main` redeploys both: Render re-runs the build (including migrations) and Vercel rebuilds
+the web app. After an API change, regenerate the web types locally (`npm run gen:api` in `web/`) and commit
+`schema.d.ts` with it.

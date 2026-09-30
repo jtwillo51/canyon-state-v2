@@ -14,7 +14,7 @@ export async function ViewAs() {
     // key: React 19 resets a form after its action runs, which would put the select back on the old
     // person. A new key per viewer remounts the form with the right default instead.
     <form key={current ?? "none"} action={viewAs} className="flex items-center gap-2 text-sm">
-      <label htmlFor="view-as" className="text-muted-foreground">
+      <label htmlFor="view-as" className="text-brand-mute">
         View as
       </label>
       <ViewAsSelect users={users} current={current} />

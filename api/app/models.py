@@ -251,6 +251,38 @@ Referral.last_touch = column_property(
 )
 
 
+class RepGoal(Record, Base):
+    """A rep's monthly goals. They carry over month to month until an admin changes them."""
+
+    __tablename__ = "rep_goals"
+    __table_args__ = (
+        live_unique("rep_goals", "user_id"),
+        CheckConstraint("clients >= 0", name="clients"),
+        CheckConstraint("sales >= 0", name="sales"),
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    clients: Mapped[int] = mapped_column(server_default="0")  # referrals bound per month
+    sales: Mapped[Decimal] = mapped_column(Numeric(12, 2), server_default="0")  # bound premium per month
+
+    user: Mapped[User] = relationship()
+
+
+class CompanyGoal(Record, Base):
+    """Company-wide targets that don't add up from reps' goals (a rate). Exactly one row."""
+
+    __tablename__ = "company_goals"
+    __table_args__ = (
+        # A boolean that must be true and unique: the table can only ever hold one row.
+        CheckConstraint("singleton", name="singleton"),
+        live_unique("company_goals", "singleton"),
+        CheckConstraint("close_rate IS NULL OR close_rate BETWEEN 0 AND 1", name="close_rate"),
+    )
+
+    singleton: Mapped[bool] = mapped_column(server_default=text("true"))
+    close_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))  # 0.6000 = 60%
+
+
 class SavedView(Record, Base):
     """A person's named view of a list: its filters, sort and columns, stored as the URL query."""
 

@@ -3,10 +3,10 @@
 // erroring, since URLs get hand-edited) and defines the built-in views.
 import type { paths } from "@/lib/api/schema";
 import type { ReferralStatus } from "@/lib/api/types";
-import { list, one, UUID, type ListView } from "@/lib/list-views";
+import { list, one, parseSort, UUID, type ListView } from "@/lib/list-views";
 
 export type ApiQuery = NonNullable<paths["/referrals"]["get"]["parameters"]["query"]>;
-type Sort = NonNullable<ApiQuery["sort"]>;
+type Sort = NonNullable<ApiQuery["sort"]>[number];
 type Line = NonNullable<ApiQuery["line"]>[number];
 
 export const PAGE_SIZE = 50;
@@ -27,7 +27,7 @@ export const COLUMNS = [
 ] as const;
 export type ColumnId = (typeof COLUMNS)[number]["id"];
 export const DEFAULT_COLUMNS: ColumnId[] = ["referred_date", "client", "partner", "line", "status", "premium", "last_touch"];
-export const DEFAULT_SORT: Sort = "-referred_date";
+export const DEFAULT_SORT: Sort[] = ["-referred_date"];
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -38,7 +38,6 @@ const SORTS = new Set<string>(COLUMNS.flatMap((c) => ("sort" in c ? [c.sort, `-$
 export function parseListParams(params: Params) {
   const stale = Number(one(params.stale));
   const page = Math.max(1, Math.floor(Number(one(params.page))) || 1);
-  const sort = one(params.sort);
   const cols = list(params.cols, COLUMNS.map((c) => c.id));
   const rep = one(params.rep);
   const boundFrom = one(params.bound_from);
@@ -53,7 +52,7 @@ export function parseListParams(params: Params) {
     bound_to: boundTo && ISO_DATE.test(boundTo) ? boundTo : undefined,
     has_premium: one(params.has_premium) === "true" ? true : undefined,
     q: one(params.q)?.slice(0, 100) || undefined,
-    sort: sort && SORTS.has(sort) ? (sort as Sort) : DEFAULT_SORT,
+    sort: parseSort<Sort>(params.sort, SORTS, DEFAULT_SORT),
     limit: PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE,
   };

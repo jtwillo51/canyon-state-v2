@@ -121,6 +121,14 @@ async def test_sort_by_premium_puts_unquoted_last(api: httpx.AsyncClient, db: As
     assert ordered[:2] == ["Small", "Big"]  # nulls last both ways
 
 
+async def test_referrals_multi_column_sort(api: httpx.AsyncClient, db: AsyncSession, world: World) -> None:
+    await add_referral(db, world, "Zed Quoted", status="quoted", premium=Decimal(500))
+    await add_referral(db, world, "Amy Quoted", status="quoted", premium=Decimal(500))
+    await add_referral(db, world, "Bob Quoted", status="quoted", premium=Decimal(900))
+    # Premium high to low, then client name A-Z for the tie.
+    assert (await names(api, world.dana, sort=["-premium", "client_name"]))[:3] == ["Bob Quoted", "Amy Quoted", "Zed Quoted"]
+
+
 async def test_paging_reports_the_total(api: httpx.AsyncClient, db: AsyncSession, world: World) -> None:
     for i in range(5):
         await add_referral(db, world, f"Extra {i}")

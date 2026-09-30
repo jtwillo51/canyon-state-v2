@@ -35,6 +35,16 @@ export function InlineField(props: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [shown, setShown] = useOptimistic(value);
+  // What the person typed in a refused save, so reopening shows it. Kept apart from `shown`, which
+  // reverts when the save fails: an input's starting value must not change while it's open.
+  const [draft, setDraft] = useState<string | null>(null);
+  const [opened, setOpened] = useState(0); // a fresh editor (key) each time it opens
+
+  function open(withDraft: string | null) {
+    setDraft(withDraft);
+    setOpened((n) => n + 1);
+    setEditing(true);
+  }
 
   function commit(next: string) {
     if (next === value) return setEditing(false);
@@ -45,7 +55,7 @@ export function InlineField(props: Props) {
       const result = await save(next);
       if (!result.ok) {
         setError(result.message);
-        setEditing(true); // reopen with what they typed, so nothing is lost
+        open(next); // reopen with what they typed, so nothing is lost
       }
     });
   }
@@ -58,7 +68,7 @@ export function InlineField(props: Props) {
         {canEdit ? (
           <button
             type="button"
-            onClick={() => setEditing(true)}
+            onClick={() => open(null)}
             aria-label={`Edit ${label.toLowerCase()}`}
             className="ml-1.5 inline-flex rounded p-0.5 align-middle text-muted-foreground opacity-40 group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100"
           >
@@ -85,7 +95,7 @@ export function InlineField(props: Props) {
         {label}
       </label>
       <div className="flex items-start gap-1">
-        <Editor id={id} {...props} defaultValue={shown} invalid={!!error} />
+        <Editor key={opened} id={id} {...props} defaultValue={draft ?? value} invalid={!!error} />
         <Button type="submit" size="icon-sm" aria-label="Save" disabled={pending}>
           <Check className="size-4" aria-hidden />
         </Button>

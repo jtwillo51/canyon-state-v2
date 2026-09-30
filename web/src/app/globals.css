@@ -8,8 +8,22 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: var(--font-plex-mono);
   --font-heading: var(--font-sans);
+  /* Canyon State palette (see :root): flag blue for structure, copper only for "measured against a goal". */
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-line: var(--brand-line);
+  --color-brand-mute: var(--brand-mute);
+  --color-copper: var(--copper);
+  --color-copper-soft: var(--copper-soft);
+  --color-copper-wash: var(--copper-wash);
+  --color-copper-ink: var(--copper-ink);
+  --color-link: var(--link);
+  --color-up: var(--up);
+  --color-down: var(--down);
+  --color-up-soft: var(--up-soft);
+  --color-down-soft: var(--down-soft);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,31 +62,47 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Arizona's flag is blue and copper. Blue (and warm paper neutrals) carry the structure; copper appears
+   only where something is measured against a goal: the active tab, goal meters, the chosen comparison. */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --brand: #0b2349; /* flag blue: header, primary buttons */
+  --brand-deep: #071a38; /* the scoreboard band */
+  --brand-line: #1c3860; /* dividers on blue */
+  --brand-mute: #93a5c0; /* secondary text on blue */
+  --copper: #c07a3a;
+  --copper-soft: #e0a36a; /* copper on dark blue */
+  --copper-wash: #f6eadd;
+  --copper-ink: #7a4515; /* text on copper-wash */
+  --link: #1d4e89;
+  --up: #1a7f4b;
+  --down: #b8322a;
+  --up-soft: #6fd8a2; /* up/down on dark blue */
+  --down-soft: #ff8f85;
+
+  --background: #f5f4f1;
+  --foreground: #17202e;
+  --card: #ffffff;
+  --card-foreground: #17202e;
+  --popover: #ffffff;
+  --popover-foreground: #17202e;
+  --primary: var(--brand);
+  --primary-foreground: #ffffff;
+  --secondary: #edeae4;
+  --secondary-foreground: #17202e;
+  --muted: #edeae4;
+  --muted-foreground: #5e6878;
+  --accent: #f1ece5;
+  --accent-foreground: #17202e;
+  --destructive: var(--down);
+  --border: #ddd9d2;
+  --input: #d3cec6;
+  --ring: #4a74b0;
+  --chart-1: var(--brand);
+  --chart-2: var(--copper);
+  --chart-3: #4a74b0;
+  --chart-4: #93a5c0;
+  --chart-5: #ddd9d2;
+  --radius: 0.375rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -126,5 +156,9 @@
   }
   html {
     @apply font-sans;
+  }
+  /* Numbers line up in columns everywhere, scoreboard-style. */
+  .font-mono {
+    font-variant-numeric: tabular-nums;
   }
 }

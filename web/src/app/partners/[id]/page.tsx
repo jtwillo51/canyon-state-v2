@@ -3,10 +3,10 @@ import { notFound } from "next/navigation";
 
 import { ChooseViewer } from "@/components/choose-viewer";
 import { DoNotContactToggle, DoNotDiscuss, PartnerContactFields } from "@/components/partner/partner-fields";
-import { ReferralTable } from "@/components/referral-table";
+import { LocalReferralGrid } from "@/components/referral/referral-grid";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { bigMoney } from "@/lib/format";
+import { agencyToday, bigMoney } from "@/lib/format";
 import { getApi } from "@/lib/viewer";
 
 export const metadata: Metadata = { title: "Partner" };
@@ -66,7 +66,7 @@ export default async function PartnerPage({ params }: PageProps<"/partners/[id]"
           <CardContent className="space-y-1 text-sm">
             {partner.production.length === 0 && <p className="text-muted-foreground">None recorded</p>}
             {partner.production.map((y) => (
-              <p key={y.year} className="flex justify-between tabular-nums">
+              <p key={y.year} className="flex justify-between font-mono">
                 <span>{y.year}</span>
                 <span>
                   {bigMoney(y.amount)}
@@ -80,7 +80,7 @@ export default async function PartnerPage({ params }: PageProps<"/partners/[id]"
 
       <section>
         <h2 className="mb-2 text-lg font-semibold">Referrals</h2>
-        <ReferralTable referrals={referrals} showPartner={false} />
+        <LocalReferralGrid rows={referrals} visible={["referred_date", "client", "line", "status", "premium", "last_touch"]} today={agencyToday()} />
       </section>
     </div>
   );

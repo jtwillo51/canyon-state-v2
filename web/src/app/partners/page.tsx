@@ -6,7 +6,7 @@ import { ViewTabs } from "@/components/list/view-tabs";
 import { PartnerFilters } from "@/components/partner/partner-filters";
 import { PartnerGrid } from "@/components/partner/partner-grid";
 import type { ListView } from "@/lib/list-views";
-import { builtInPartnerViews, PAGE_SIZE, parsePartnerParams, PERIODS } from "@/lib/partner-list";
+import { builtInPartnerViews, DEFAULT_SORT, PAGE_SIZE, parsePartnerParams, PERIODS } from "@/lib/partner-list";
 import { getApi } from "@/lib/viewer";
 
 export const metadata: Metadata = { title: "Partners" };
@@ -50,7 +50,7 @@ export default async function PartnersPage({ searchParams }: PageProps<"/partner
       </div>
       <ViewTabs views={views} list="partners" basePath="/partners" />
       <PartnerFilters reps={reps.data} />
-      <PartnerGrid rows={items} visible={cols} sort={query.sort ?? "-referrals"} isAdmin={me.data.role === "admin"} />
+      <PartnerGrid rows={items} visible={cols} sort={query.sort ?? DEFAULT_SORT} isAdmin={me.data.role === "admin"} />
       <p className="text-xs text-muted-foreground">
         Close rate is bound ÷ referred, by count: a placeholder until the agency confirms how it measures it.
       </p>
@@ -62,12 +62,12 @@ export default async function PartnersPage({ searchParams }: PageProps<"/partner
           </span>
           <span className="flex gap-2">
             {page > 1 && (
-              <Link href={pageHref(page - 1)} className="rounded-md border px-3 py-1 hover:bg-muted">
+              <Link href={pageHref(page - 1)} className="rounded-md border bg-card px-3 py-1 hover:bg-accent">
                 Previous
               </Link>
             )}
             {page < pages && (
-              <Link href={pageHref(page + 1)} className="rounded-md border px-3 py-1 hover:bg-muted">
+              <Link href={pageHref(page + 1)} className="rounded-md border bg-card px-3 py-1 hover:bg-accent">
                 Next
               </Link>
             )}

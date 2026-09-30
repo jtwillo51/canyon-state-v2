@@ -1,19 +1,26 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import Link from "next/link";
 
+import { AppNav } from "@/components/app-nav";
+import { ProgressPrefsProvider } from "@/components/progress/prefs";
+import { ProgressStrip } from "@/components/progress/progress-strip";
 import { ViewAs } from "@/components/view-as";
+import { getProgress, getProgressPrefs } from "@/lib/progress-server";
 
 import "./globals.css";
 
-const geistSans = Geist({
+// IBM Plex: Sans for words, Mono for numbers (money, counts, rates), so columns line up like a scoreboard.
+const plexSans = IBM_Plex_Sans({
   variable: "--font-sans", // globals.css (shadcn's theme) reads --font-sans
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
   subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -21,32 +28,38 @@ export const metadata: Metadata = {
   description: "Referral partner reporting for Canyon State Insurance",
 };
 
-const NAV = [
-  { href: "/pipeline", label: "Pipeline" },
-  { href: "/partners", label: "Partners" },
-  { href: "/referrals", label: "Referrals" },
-] as const;
-
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Every page shows the progress strip, so the layout loads it (once per request, in parallel).
+  const [progress, prefs] = await Promise.all([getProgress(), getProgressPrefs()]);
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="en" className={`${plexSans.variable} ${plexMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-background text-foreground">
-        <header className="border-b">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <nav className="flex items-center gap-5">
-              <Link href="/partners" className="font-semibold">
-                Canyon State
-              </Link>
-              {NAV.map((item) => (
-                <Link key={item.href} href={item.href} className="text-sm text-muted-foreground hover:text-foreground">
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-            <ViewAs />
+        {/* The public demo: server-only env var, set on Vercel. */}
+        {process.env.DEMO_MODE === "true" && (
+          <p className="bg-copper-wash px-4 py-1.5 text-center text-xs text-copper-ink">
+            <strong>Demo</strong> · every person, partner and client here is fictional · changes reset nightly · use{" "}
+            <strong>View as</strong> to switch between an admin and a rep
+          </p>
+        )}
+        <header className="bg-brand text-white">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-stretch gap-x-6 px-4">
+            <Link href="/dashboard" className="flex items-center gap-2.5 py-2.5 text-[15px] font-semibold">
+              <span aria-hidden className="grid size-6 place-items-center rounded-[5px] bg-copper text-xs font-semibold text-brand">
+                CS
+              </span>
+              Canyon State
+            </Link>
+            <AppNav />
+            <div className="ml-auto flex items-center py-2">
+              <ViewAs />
+            </div>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
+        {/* One provider around the strip and the page, so the dashboard and the strip share the switch. */}
+        <ProgressPrefsProvider compare={prefs.compare} collapsed={prefs.collapsed}>
+          {progress && <ProgressStrip progress={progress} />}
+          <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
+        </ProgressPrefsProvider>
       </body>
     </html>
   );

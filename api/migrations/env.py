@@ -25,7 +25,7 @@ target_metadata = Base.metadata
 def run_migrations_offline() -> None:
     """`alembic upgrade --sql`: print the SQL instead of running it (useful for review)."""
     context.configure(
-        url=settings.database_url,
+        url=settings.sqlalchemy_url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -42,7 +42,7 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_migrations_online() -> None:
     # Alembic's migration API is synchronous; run_sync bridges it onto the async connection.
-    engine = create_async_engine(settings.database_url)
+    engine = create_async_engine(settings.sqlalchemy_url, connect_args=settings.connect_args)
     async with engine.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await engine.dispose()

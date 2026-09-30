@@ -23,7 +23,7 @@ export function Chips({ name, options, label }: Props) {
           type="button"
           aria-pressed={selected.has(o)}
           onClick={() => toggle(o)}
-          className="rounded-full border px-2.5 py-0.5 text-xs capitalize aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+          className="rounded-full border px-2.5 py-0.5 text-xs first-letter:uppercase aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
         >
           {o}
         </button>

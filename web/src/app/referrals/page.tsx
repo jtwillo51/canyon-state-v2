@@ -7,7 +7,7 @@ import { ReferralGrid } from "@/components/referral/referral-grid";
 import { ViewTabs } from "@/components/list/view-tabs";
 import { agencyToday } from "@/lib/format";
 import type { ListView } from "@/lib/list-views";
-import { builtInViews, PAGE_SIZE, parseListParams } from "@/lib/referral-list";
+import { builtInViews, DEFAULT_SORT, PAGE_SIZE, parseListParams } from "@/lib/referral-list";
 import { getApi } from "@/lib/viewer";
 
 export const metadata: Metadata = { title: "Referrals" };
@@ -53,7 +53,7 @@ export default async function ReferralsPage({ searchParams }: PageProps<"/referr
       <ViewTabs views={views} list="referrals" basePath="/referrals" />
       {/* Only admins filter by rep: a rep's list is already just theirs. */}
       <ReferralFilters reps={me.data.role === "admin" ? reps.data : null} />
-      <ReferralGrid rows={items} visible={cols} sort={query.sort ?? "-referred_date"} today={today} />
+      <ReferralGrid rows={items} visible={cols} sort={query.sort ?? DEFAULT_SORT} today={today} />
 
       {pages > 1 && (
         <nav aria-label="Pages" className="flex items-center justify-between text-sm">
@@ -62,12 +62,12 @@ export default async function ReferralsPage({ searchParams }: PageProps<"/referr
           </span>
           <span className="flex gap-2">
             {page > 1 && (
-              <Link href={pageHref(page - 1)} className="rounded-md border px-3 py-1 hover:bg-muted">
+              <Link href={pageHref(page - 1)} className="rounded-md border bg-card px-3 py-1 hover:bg-accent">
                 Previous
               </Link>
             )}
             {page < pages && (
-              <Link href={pageHref(page + 1)} className="rounded-md border px-3 py-1 hover:bg-muted">
+              <Link href={pageHref(page + 1)} className="rounded-md border bg-card px-3 py-1 hover:bg-accent">
                 Next
               </Link>
             )}

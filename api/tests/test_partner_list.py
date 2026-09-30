@@ -88,6 +88,53 @@ async def test_sort_by_close_rate_puts_no_referrals_last(
     assert list(await rows(api, world.dana, sort="close_rate")) == ["Pat Partner", "Busy Partner", "Quiet Partner"]
 
 
+async def test_top_partners_close_rate_then_referrals(
+    api: httpx.AsyncClient, db: AsyncSession, world: World, busy: Partner
+) -> None:
+    """The Top partners page: sort=-close_rate, ties broken by more referrals, below the minimum not ranked."""
+    small = Partner(name="Small Partner", type="Realtor")  # 2 of 4 bound: same 50% as Busy, fewer referrals
+    lucky = Partner(name="Lucky Partner", type="Realtor")  # 1 of 1 bound: 100%, but below the minimum
+    db.add_all([small, lucky])
+    await db.flush()
+    for i in range(4):
+        await referral(db, world, small, world.tessa, **({"status": "bound", "premium": Decimal(100), "bound_date": TODAY} if i < 2 else {}))  # fmt: skip
+    await referral(db, world, lucky, world.tessa, status="bound", premium=Decimal(100), bound_date=TODAY)
+
+    ranked = list(await rows(api, world.dana, sort="-close_rate", min_referrals=3))
+    # Busy (4 referrals, 50%) and Small (4, 50%) tie on both: then name. Pat (2 referrals) is below 3.
+    assert ranked == ["Busy Partner", "Small Partner"]
+    assert "Lucky Partner" in await rows(api, world.dana, sort="-close_rate")  # listed when no minimum
+
+
+async def test_ties_break_on_referrals(api: httpx.AsyncClient, db: AsyncSession, world: World, busy: Partner) -> None:
+    extra = Partner(name="Aardvark Partner", type="Realtor")  # 2 of 3 bound: 67%, 3 referrals
+    more = Partner(name="Zebra Partner", type="Realtor")  # 4 of 6 bound: 67%, 6 referrals: ranks first
+    db.add_all([extra, more])
+    await db.flush()
+    for p, n, won in ((extra, 3, 2), (more, 6, 4)):
+        for i in range(n):
+            await referral(db, world, p, world.tessa, **({"status": "bound", "premium": Decimal(100), "bound_date": TODAY} if i < won else {}))  # fmt: skip
+    assert list(await rows(api, world.dana, sort="-close_rate", min_referrals=3))[:2] == ["Zebra Partner", "Aardvark Partner"]
+
+
+async def test_multi_column_sort(api: httpx.AsyncClient, db: AsyncSession, world: World, busy: Partner) -> None:
+    """Sort by bound (desc), then name ascending: shift-click on a second header."""
+    for name in ("Beta Partner", "Alpha Partner"):  # both 0 bound, like Pat Partner
+        db.add(Partner(name=name, type="Realtor"))
+    await db.flush()
+    ranked = list(await rows(api, world.dana, sort=["-bound", "name"]))
+    assert ranked == ["Busy Partner", "Alpha Partner", "Beta Partner", "Pat Partner"]
+    ranked = list(await rows(api, world.dana, sort=["-bound", "-name"]))
+    assert ranked == ["Busy Partner", "Pat Partner", "Beta Partner", "Alpha Partner"]
+
+
+@pytest.mark.parametrize("sort", [["name", "-name"], ["name", "bound", "referrals", "close_rate"]])
+async def test_sort_limits(api: httpx.AsyncClient, world: World, sort: list[str]) -> None:
+    """Each column at most once, and at most three columns."""
+    r = await api.get("/partners", params={"sort": sort}, headers=as_user(world.dana))
+    assert r.status_code == 422
+
+
 async def test_filters(api: httpx.AsyncClient, world: World, busy: Partner) -> None:
     assert list(await rows(api, world.dana, type=["Loan officer"])) == ["Busy Partner"]
     assert list(await rows(api, world.dana, unassigned=True)) == ["Busy Partner"]
