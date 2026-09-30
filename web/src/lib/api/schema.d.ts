@@ -112,6 +112,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/referrals/{referral_id}/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Activities
+         * @description Logged touches on a referral, newest first. Whoever can see the referral sees these.
+         */
+        get: operations["list_activities_referrals__referral_id__activities_get"];
+        put?: never;
+        /**
+         * Log Activity
+         * @description Log a call, email or meeting with the client. Doesn't change steps or credit.
+         */
+        post: operations["log_activity_referrals__referral_id__activities_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/me": {
         parameters: {
             query?: never;
@@ -124,6 +148,26 @@ export interface paths {
          * @description Who the API thinks is asking.
          */
         get: operations["me_users_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Team
+         * @description Everyone active on the team, e.g. for 'who made contact'.
+         */
+        get: operations["list_team_users_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -190,6 +234,54 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ActivityIn
+         * @description Log a touch. Rules beyond these types (dates, who) are checked in the endpoint.
+         */
+        ActivityIn: {
+            /**
+             * Rep Id
+             * Format: uuid
+             */
+            rep_id: string;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "In person" | "Phone" | "Email";
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+        };
+        /** ActivityOut */
+        ActivityOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "In person" | "Phone" | "Email";
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Notes */
+            notes: string;
+            rep: components["schemas"]["UserRef"];
+            logged_by: components["schemas"]["UserRef"];
+        };
         /** CarrierRef */
         CarrierRef: {
             /**
@@ -217,6 +309,13 @@ export interface components {
              * @enum {string}
              */
             role: "admin" | "rep";
+        };
+        /** FieldErrorOut */
+        FieldErrorOut: {
+            /** Message */
+            message: string;
+            /** Field */
+            field: string | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -284,13 +383,6 @@ export interface components {
             name: string;
             /** Business Name */
             business_name: string;
-        };
-        /** PipelineErrorOut */
-        PipelineErrorOut: {
-            /** Message */
-            message: string;
-            /** Field */
-            field: string | null;
         };
         /** ProductionOut */
         ProductionOut: {
@@ -598,7 +690,77 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PipelineErrorOut"];
+                    "application/json": components["schemas"]["FieldErrorOut"];
+                };
+            };
+        };
+    };
+    list_activities_referrals__referral_id__activities_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path: {
+                referral_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    log_activity_referrals__referral_id__activities_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path: {
+                referral_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldErrorOut"];
                 };
             };
         };
@@ -621,6 +783,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_team_users_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRef"][];
                 };
             };
             /** @description Validation Error */

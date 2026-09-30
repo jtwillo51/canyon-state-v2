@@ -26,6 +26,8 @@ PartnerType = Literal["Loan officer", "Realtor", "Financial advisor", "Other"]
 ReferralStatus = Literal["referred", "contacted", "quoted", "bound", "lost"]
 LineOfBusiness = Literal["Auto", "Home", "Umbrella", "Life", "Commercial"]
 ReferralStep = Literal["introduction", "contact", "quote", "bind"]
+# How a rep reached someone: the agency's own form uses these three.
+ContactMethod = Literal["In person", "Phone", "Email"]
 
 
 def one_of(column: str, values: type) -> str:
@@ -196,3 +198,34 @@ class ReferralStepCredit(Record, Base):
 
     referral: Mapped[Referral] = relationship(back_populates="steps")
     rep: Mapped[User] = relationship()
+
+
+class Activity(Record, Base):
+    """A logged touch: a call, an email, a meeting. Never changes steps or credit.
+
+    Belongs to exactly one parent. Referrals today; partners (visits) later. Each parent is a real
+    foreign key, so the database won't let an activity point at nothing.
+    """
+
+    __tablename__ = "activities"
+    __table_args__ = (
+        CheckConstraint("num_nonnulls(referral_id, partner_id) = 1", name="one_parent"),
+        CheckConstraint(one_of("method", ContactMethod), name="method"),
+        CheckConstraint("char_length(notes) <= 2000", name="notes_length"),
+    )
+
+    referral_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("referrals.id"), index=True)
+    partner_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("partners.id"), index=True)
+    # Who made contact. May differ from logged_by: people log touches on a colleague's behalf.
+    rep_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    # Who entered it.
+    logged_by_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    method: Mapped[str]
+    notes: Mapped[str] = mapped_column(server_default="")
+    date: Mapped[date]
+
+    # Relationships to the parents also tell SQLAlchemy to insert a parent before its activities.
+    referral: Mapped[Referral | None] = relationship()
+    partner: Mapped[Partner | None] = relationship()
+    rep: Mapped[User] = relationship(foreign_keys=[rep_id])
+    logged_by: Mapped[User] = relationship(foreign_keys=[logged_by_id])

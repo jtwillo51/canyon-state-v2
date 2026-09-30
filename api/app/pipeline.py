@@ -13,6 +13,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import get_args
 
+from app.errors import FieldError
 from app.models import Referral, ReferralStatus, ReferralStepCredit, User
 
 # Position on the pipeline. "lost" is off the line: it's an outcome, not a step.
@@ -23,12 +24,8 @@ OPEN = ("referred", "contacted", "quoted")
 assert set(ORDER) | {"lost"} == set(get_args(ReferralStatus))
 
 
-class PipelineError(Exception):
+class PipelineError(FieldError):
     """A change the rules don't allow. The message is shown to the user as-is."""
-
-    def __init__(self, message: str, field: str | None = None):
-        super().__init__(message)
-        self.field = field
 
 
 def check_move(referral: Referral, target: str, viewer: User) -> None:

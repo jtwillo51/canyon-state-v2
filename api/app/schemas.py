@@ -10,7 +10,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
 
-from app.models import LineOfBusiness, PartnerType, ReferralStatus, ReferralStep, Role
+from app.models import ContactMethod, LineOfBusiness, PartnerType, ReferralStatus, ReferralStep, Role
 
 # Money is Numeric in the database and a JSON number on the wire (Pydantic's default is a string).
 Money = Annotated[Decimal, PlainSerializer(float, return_type=float)]
@@ -104,6 +104,19 @@ class StatusChange(BaseModel):
     credit_rep_id: uuid.UUID | None = None
 
 
-class PipelineErrorOut(BaseModel):
-    message: str
-    field: str | None
+class ActivityOut(Schema):
+    id: uuid.UUID
+    method: ContactMethod
+    date: date
+    notes: str
+    rep: UserRef  # who made contact
+    logged_by: UserRef  # who entered it
+
+
+class ActivityIn(BaseModel):
+    """Log a touch. Rules beyond these types (dates, who) are checked in the endpoint."""
+
+    rep_id: uuid.UUID
+    date: date
+    method: ContactMethod
+    notes: str = Field(default="", max_length=2000)

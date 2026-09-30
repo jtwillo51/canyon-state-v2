@@ -14,6 +14,13 @@ async def me(viewer: Viewer) -> Me:
     return Me.model_validate(viewer)
 
 
+@router.get("")
+async def list_team(viewer: Viewer, db: DB) -> list[UserRef]:
+    """Everyone active on the team, e.g. for 'who made contact'."""
+    users = (await db.execute(select(User).where(User.active).order_by(User.name))).scalars()
+    return [UserRef.model_validate(u) for u in users]
+
+
 @router.get("/reps")
 async def list_reps(viewer: Viewer, db: DB) -> list[UserRef]:
     """Active reps, e.g. for an admin choosing who gets credit for a pipeline move."""

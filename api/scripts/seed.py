@@ -20,7 +20,7 @@ from sqlalchemy.engine import make_url
 
 from app.config import settings
 from app.db import SessionLocal, engine
-from app.models import Base, Carrier, Partner, PartnerProduction, Referral, ReferralStepCredit, User
+from app.models import Activity, Base, Carrier, Partner, PartnerProduction, Referral, ReferralStepCredit, User
 
 rng = Random(20260918)
 
@@ -188,8 +188,52 @@ def build() -> list[Base]:
             if bound_date:
                 credit("bind", work_rep, bound_date)
 
+    activities = build_activities(referrals, steps)
+
     # Parents before children, so foreign keys are satisfied as rows go in.
-    return [*users, *carriers, *partners, *production, *referrals, *steps]
+    return [*users, *carriers, *partners, *production, *referrals, *steps, *activities]
+
+
+ACTIVITY_NOTES = [
+    "Left a voicemail, will try again tomorrow.",
+    "Sent the quote comparison.",
+    "Walked through coverage options and deductibles.",
+    "Asked for their current declarations page.",
+    "Confirmed the closing date with the lender.",
+    "Followed up on the signed application.",
+]
+
+
+def build_activities(referrals: list[Referral], steps: list[ReferralStepCredit]) -> list[Activity]:
+    """Touches with each referred client, by the reps on that referral, between referral and close.
+
+    Uses its own generator: drawing from `rng` would shift every id generated after this was added.
+    """
+    arng = Random(20260929)
+    reps_on: dict[uuid.UUID, list[uuid.UUID]] = {}
+    for s in steps:
+        reps_on.setdefault(s.referral_id, [])
+        if s.rep_id not in reps_on[s.referral_id]:
+            reps_on[s.referral_id].append(s.rep_id)
+
+    activities = []
+    for r in referrals:
+        end = r.bound_date or r.lost_date or TODAY
+        span = max(0, (end - r.referred_date).days)
+        for _ in range(arng.randint(0, 1) if r.status == "referred" else arng.randint(1, 4)):
+            rep = arng.choice(reps_on[r.id])
+            activities.append(
+                Activity(
+                    id=uuid.UUID(int=arng.getrandbits(128), version=4),
+                    referral_id=r.id,
+                    rep_id=rep,
+                    logged_by_id=rep,
+                    method=arng.choice(["In person", "Phone", "Phone", "Phone", "Email"]),
+                    notes=arng.choice(ACTIVITY_NOTES),
+                    date=r.referred_date + timedelta(days=arng.randint(0, span)),
+                )
+            )
+    return activities
 
 
 async def main() -> None:

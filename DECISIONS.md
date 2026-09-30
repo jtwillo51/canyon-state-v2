@@ -189,3 +189,25 @@ still open with the agency (FIELD_QUESTIONS #1). These rules are decided for the
   `GET /users/reps` (the admin's rep picker; `/dev/users` can't be used because it disappears in production).
 - **React 19 resets a form after its action runs.** Remounting with a `key` tied to the viewer keeps the
   "View as" select (and the board's leftover error state) in step with who is viewing.
+
+## Activity timeline (2026-09-29)
+
+- **v1's rules carry over:** anyone who can see a referral can log a touch on it; it records who made
+  contact (any active team member, since people log on a colleague's behalf), a date between the referral date
+  and today, a method (the agency's three: In person, Phone, Email) and notes up to 2,000 characters.
+  **Activities never change steps or credit.**
+- **One `activities` table with typed parents** (migration 3): `referral_id` and `partner_id` are real
+  foreign keys, and a CHECK (`num_nonnulls(...) = 1`) makes the database require exactly one. Referral
+  activity now; partner visits later need no new table. Chosen over a generic `entity_type/entity_id`, which
+  can't be a foreign key.
+- **`logged_by_id` alongside `rep_id`:** who typed it vs who made contact. Shown as "Logged by …" when they
+  differ; the seed of an audit trail.
+- **The timeline merges** logged activity with pipeline milestones (referred, each credited step, lost) into
+  one newest-first stream, built in the web app from data it already loads. Nothing is stored twice.
+- **One error shape for the whole API:** raise `FieldError(message, field)` anywhere; one handler turns it
+  into 422 `{message, field}` (`app/errors.py`). `PipelineError` is now a `FieldError`.
+- **`GET /users`** lists the active team for "who made contact" (admins included).
+- **The log form uses `onSubmit` + a transition, not `<form action>`:** React 19 resets a form after its
+  action even when the save fails, which would wipe what was typed. The form clears only on success and
+  marks the failing field `aria-invalid`.
+- **Seeded activity uses its own random generator**, so adding it didn't shift any existing id.

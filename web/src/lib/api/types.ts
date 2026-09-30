@@ -10,3 +10,5 @@ export type Step = Schemas["StepOut"];
 export type Me = Schemas["Me"];
 export type UserRef = Schemas["UserRef"];
 export type StatusChange = Schemas["StatusChange"];
+export type Activity = Schemas["ActivityOut"];
+export type ActivityIn = Schemas["ActivityIn"];

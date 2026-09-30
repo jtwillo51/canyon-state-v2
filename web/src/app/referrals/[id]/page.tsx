@@ -3,26 +3,32 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ChooseViewer } from "@/components/choose-viewer";
+import { LogActivity } from "@/components/referral/log-activity";
+import { Timeline } from "@/components/referral/timeline";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { blockedOr, day, money } from "@/lib/format";
+import { agencyToday, blockedOr, day, money } from "@/lib/format";
+import { buildTimeline } from "@/lib/timeline";
 import { getApi } from "@/lib/viewer";
 
 export const metadata: Metadata = { title: "Referral" };
-
-const STEP_LABEL = { introduction: "Introduced", contact: "Contacted", quote: "Quoted", bind: "Bound" } as const;
 
 export default async function ReferralPage({ params }: PageProps<"/referrals/[id]">) {
   const { id } = await params;
   const api = await getApi();
   if (!api) return <ChooseViewer />;
 
-  const { data: r, response } = await api.GET("/referrals/{referral_id}", {
-    params: { path: { referral_id: id } },
-  });
+  const path = { params: { path: { referral_id: id } } };
+  const [referral, activities, me, team] = await Promise.all([
+    api.GET("/referrals/{referral_id}", path),
+    api.GET("/referrals/{referral_id}/activities", path),
+    api.GET("/users/me"),
+    api.GET("/users"),
+  ]);
   // The API returns 404 for someone else's referral too, so it's indistinguishable from "doesn't exist".
-  if (response.status === 404 || response.status === 422) notFound();
-  if (!r) throw new Error("Couldn't load this referral");
+  if (referral.response.status === 404 || referral.response.status === 422) notFound();
+  const r = referral.data;
+  if (!r || !activities.data || !me.data || !team.data) throw new Error("Couldn't load this referral");
 
   return (
     <div className="space-y-6">
@@ -67,16 +73,19 @@ export default async function ReferralPage({ params }: PageProps<"/referrals/[id
         </Card>
       </div>
 
-      <section>
-        <h2 className="mb-2 text-lg font-semibold">Steps</h2>
-        <ol className="space-y-2 border-l pl-4 text-sm">
-          {r.steps.map((s) => (
-            <li key={s.step}>
-              <span className="font-medium">{STEP_LABEL[s.step]}</span> by {s.rep.name}{" "}
-              <span className="text-muted-foreground">· {day(s.date)}</span>
-            </li>
-          ))}
-        </ol>
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold">Timeline</h2>
+        {/* key: switching viewer remounts the form, so "who made contact" defaults to the new viewer
+            and nothing typed as someone else carries over. */}
+        <LogActivity
+          key={me.data.id}
+          referralId={r.id}
+          referredDate={r.referred_date}
+          today={agencyToday()}
+          viewerId={me.data.id}
+          team={team.data}
+        />
+        <Timeline entries={buildTimeline(r, activities.data)} />
       </section>
     </div>
   );
