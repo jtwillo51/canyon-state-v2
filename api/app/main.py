@@ -5,7 +5,7 @@ from sqlalchemy import text
 from app.auth import DB
 from app.errors import FieldError, field_error_handler, validation_error_handler
 from app.jobs.endpoint import jobs_router
-from app.routers import carriers, dev, notifications, partners, progress, referrals, users, views
+from app.routers import carriers, dev, history, notifications, partners, progress, referrals, users, views
 
 app = FastAPI(title="Canyon State API", version="0.1.0")
 app.add_exception_handler(FieldError, field_error_handler)
@@ -17,6 +17,7 @@ app.include_router(views.router)
 app.include_router(carriers.router)
 app.include_router(progress.router)
 app.include_router(notifications.router)
+app.include_router(history.router)
 app.include_router(dev.router)
 
 # Inngest's endpoint, only where it's configured (see app/jobs/endpoint.py).

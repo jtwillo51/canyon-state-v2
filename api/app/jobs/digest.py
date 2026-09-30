@@ -8,9 +8,9 @@ import uuid
 from datetime import date, timedelta
 
 from sqlalchemy import and_, func, select
-from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.audit import audited_insert
 from app.jobs.stale import stale_cutoff
 from app.models import Notification, Referral, ReferralStepCredit, User
 from app.pipeline import OPEN
@@ -77,17 +77,10 @@ async def build_digest(db: AsyncSession, user: User, today: date) -> DigestData:
 
 async def store_digest(db: AsyncSession, user_id: uuid.UUID, digest: DigestData) -> bool:
     """Save one person's digest. Returns False if they already have this week's (a retry or a repeat run)."""
-    stmt = (
-        insert(Notification)
-        .values(
-            user_id=user_id,
-            kind="weekly_digest",
-            dedupe_key=digest_key(digest.week_start),
-            data=digest.model_dump(mode="json"),
-        )
-        .on_conflict_do_nothing(index_elements=["user_id", "dedupe_key"], index_where=Notification.deleted_at.is_(None))
-        .returning(Notification.id)
+    row = {"user_id": user_id, "kind": "weekly_digest", "dedupe_key": digest_key(digest.week_start),
+           "data": digest.model_dump(mode="json")}  # fmt: skip
+    written = await audited_insert(
+        db, Notification, [row], skip_duplicates_on=["user_id", "dedupe_key"], where=Notification.deleted_at.is_(None)
     )
-    written = (await db.execute(stmt)).first() is not None
     await db.commit()
-    return written
+    return bool(written)

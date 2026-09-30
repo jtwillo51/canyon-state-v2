@@ -22,6 +22,9 @@ the response includes), explain the options, recommend one, and wait for the own
 3. Refuse with `FieldError` (422, shown next to a field) or `HTTPException(404)` for records the viewer
    can't see (never 403).
 4. A new router module needs `app.include_router(...)` in `app/main.py`.
+5. Writes are audited automatically if they change ORM objects (never bulk `update()`/`insert()` on a table,
+   which is refused). If the new data holds personal details or free text, add those fields to
+   `audit.REDACTED`; if it belongs on a referral's or partner's history, add it to `audit.SUBJECTS`.
 
 ## 3. Prove who may use it
 1. Add a row to `CASES` in `api/tests/test_access_matrix.py` with the expected status for all four people.

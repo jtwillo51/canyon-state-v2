@@ -369,6 +369,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/referrals/{referral_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Referral History */
+        get: operations["referral_history_referrals__referral_id__history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/partners/{partner_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Partner History */
+        get: operations["partner_history_partners__partner_id__history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/dev/users": {
         parameters: {
             query?: never;
@@ -545,6 +579,24 @@ export interface components {
              */
             reps: components["schemas"]["RepWeek"][];
         };
+        /** FieldChange */
+        FieldChange: {
+            /** Field */
+            field: string;
+            /**
+             * Redacted
+             * @default false
+             */
+            redacted: boolean;
+            /** Before */
+            before?: string | number | boolean | null;
+            /** After */
+            after?: string | number | boolean | null;
+            /** Before Label */
+            before_label?: string | null;
+            /** After Label */
+            after_label?: string | null;
+        };
         /** FieldErrorOut */
         FieldErrorOut: {
             /** Message */
@@ -556,6 +608,36 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HistoryEvent */
+        HistoryEvent: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            actor: components["schemas"]["UserRef"] | null;
+            /** Actor Label */
+            actor_label: string | null;
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "insert" | "update" | "delete" | "restore";
+            /** Entity */
+            entity: string;
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /** Changes */
+            changes: components["schemas"]["FieldChange"][];
         };
         /**
          * Me
@@ -1780,6 +1862,72 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    referral_history_referrals__referral_id__history_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path: {
+                referral_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryEvent"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    partner_history_partners__partner_id__history_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+            };
+            path: {
+                partner_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryEvent"][];
+                };
             };
             /** @description Validation Error */
             422: {

@@ -20,3 +20,5 @@ export type NotificationPage = Schemas["NotificationPage"];
 export type Notification = Schemas["NotificationOut"];
 export type Digest = Schemas["DigestData"];
 export type WeekTally = Schemas["WeekTally"];
+export type HistoryEvent = Schemas["HistoryEvent"];
+export type FieldChange = Schemas["FieldChange"];

@@ -1,3 +1,4 @@
+import { ChangeHistory } from "@/components/history/change-history";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -17,16 +18,19 @@ export default async function PartnerPage({ params }: PageProps<"/partners/[id]"
   if (!api) return <ChooseViewer />;
 
   // All in parallel. Referrals are scoped by the API: a rep sees only their own.
-  const [partnerRes, referralsRes, me, reps] = await Promise.all([
-    api.GET("/partners/{partner_id}", { params: { path: { partner_id: id } } }),
+  const path = { params: { path: { partner_id: id } } };
+  const [partnerRes, referralsRes, history, me, reps] = await Promise.all([
+    api.GET("/partners/{partner_id}", path),
     api.GET("/referrals", { params: { query: { partner_id: id, limit: 200 } } }),
+    api.GET("/partners/{partner_id}/history", path),
     api.GET("/users/me"),
     api.GET("/users/reps"),
   ]);
+  const historyData = history.data;
   if (partnerRes.response.status === 404 || partnerRes.response.status === 422) notFound();
   const partner = partnerRes.data;
   const referrals = referralsRes.data?.items;
-  if (!partner || !referrals || !me.data || !reps.data) throw new Error("Couldn't load this partner");
+  if (!partner || !referrals || !historyData || !me.data || !reps.data) throw new Error("Couldn't load this partner");
 
   return (
     <div className="space-y-6">
@@ -82,6 +86,8 @@ export default async function PartnerPage({ params }: PageProps<"/partners/[id]"
         <h2 className="mb-2 text-lg font-semibold">Referrals</h2>
         <LocalReferralGrid rows={referrals} visible={["referred_date", "client", "line", "status", "premium", "last_touch"]} today={agencyToday()} />
       </section>
+
+      <ChangeHistory events={historyData} />
     </div>
   );
 }

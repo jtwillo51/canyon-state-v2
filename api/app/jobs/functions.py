@@ -19,6 +19,7 @@ import inngest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.audit import Actor, set_actor
 from app.clock import AGENCY_TZ, agency_today
 from app.config import settings
 from app.db import SessionLocal
@@ -50,6 +51,7 @@ async def _today() -> str:
 
 async def _notify_stale(today: str) -> int:
     async with session_factory() as db:
+        set_actor(db, Actor.job("stale-referrals"))
         return await notify_stale(db, date.fromisoformat(today))
 
 
@@ -73,6 +75,7 @@ async def _digest_for(user_id: str, today: str) -> bool:
         user = await db.get(User, uuid.UUID(user_id))
         if user is None or not user.active:  # deactivated since the recipients step ran
             return False
+        set_actor(db, Actor.job("weekly-digest"))
         digest = await build_digest(db, user, date.fromisoformat(today))
         return await store_digest(db, user.id, digest)
 

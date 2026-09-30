@@ -1,3 +1,4 @@
+import { ChangeHistory } from "@/components/history/change-history";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -20,9 +21,10 @@ export default async function ReferralPage({ params }: PageProps<"/referrals/[id
   if (!api) return <ChooseViewer />;
 
   const path = { params: { path: { referral_id: id } } };
-  const [referral, activities, me, team, carriers] = await Promise.all([
+  const [referral, activities, history, me, team, carriers] = await Promise.all([
     api.GET("/referrals/{referral_id}", path),
     api.GET("/referrals/{referral_id}/activities", path),
+    api.GET("/referrals/{referral_id}/history", path),
     api.GET("/users/me"),
     api.GET("/users"),
     api.GET("/carriers"),
@@ -30,7 +32,7 @@ export default async function ReferralPage({ params }: PageProps<"/referrals/[id
   // The API returns 404 for someone else's referral too, so it's indistinguishable from "doesn't exist".
   if (referral.response.status === 404 || referral.response.status === 422) notFound();
   const r = referral.data;
-  if (!r || !activities.data || !me.data || !team.data || !carriers.data) throw new Error("Couldn't load this referral");
+  if (!r || !activities.data || !history.data || !me.data || !team.data || !carriers.data) throw new Error("Couldn't load this referral");
 
   return (
     <div className="space-y-6">
@@ -87,6 +89,8 @@ export default async function ReferralPage({ params }: PageProps<"/referrals/[id
         />
         <Timeline entries={buildTimeline(r, activities.data)} />
       </section>
+
+      <ChangeHistory events={history.data} />
     </div>
   );
 }

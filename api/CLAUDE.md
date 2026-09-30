@@ -14,6 +14,7 @@ Run everything from `api/` with `uv run …`. Layout is a flat `app/` package:
 | `errors.py` | `FieldError(message, field)` → 422 `{message, field}` |
 | `clock.py` | `agency_today()`: the agency's date (America/Phoenix) |
 | `routers/` | one module per resource |
+| `audit.py` | the audit trail: records every write automatically (see below) |
 | `jobs/` | Inngest background jobs: `functions.py` (schedules, steps), `stale.py` and `digest.py` (logic), `endpoint.py` (/api/inngest) |
 
 ## Conventions
@@ -30,6 +31,19 @@ Run everything from `api/` with `uv run …`. Layout is a flat `app/` package:
 - **Partial updates act on `model_fields_set`:** `null` clears a field, omitting it leaves it alone.
 - **Response models name every field that leaves the API.** A column reaches the browser only if a schema lists it.
 - After changing schemas or routes, regenerate the web client (see the root CLAUDE.md).
+
+## Audit trail (`app/audit.py`)
+
+- **Automatic:** an `after_flush` hook records every insert, update and soft delete (before/after per field)
+  in the same transaction, attributed to the session's Actor: the signed-in viewer (set in `get_viewer`), a
+  job, a script, or "system". Nothing to call from endpoints.
+- **Don't bypass it:** change ORM objects. Bulk `update()/insert()/delete()` on audited tables raise; for
+  many-row inserts use `audit.audited_insert`. New tables are audited automatically.
+- **Sensitive values are never stored** (`REDACTED`): add a field there when it holds personal data or free text.
+- **Whose history:** `SUBJECTS` maps a table to the referral/partner an event belongs to. A partner's history is
+  its own changes only (never its referrals': partners are shared, referrals aren't).
+- **Append-only in the database:** UPDATE/DELETE on `audit_events` are refused by a trigger; TRUNCATE only with
+  `SET LOCAL canyon.allow_audit_reset = 'on'`, which only the seed script sets.
 
 ## Background jobs (`app/jobs/`)
 

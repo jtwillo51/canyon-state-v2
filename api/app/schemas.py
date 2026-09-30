@@ -11,6 +11,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, field_validator
 
 from app.models import (
+    AuditAction,
     ContactMethod,
     LineOfBusiness,
     ListName,
@@ -378,3 +379,29 @@ class NotificationOut(BaseModel):
 class NotificationPage(BaseModel):
     items: list[NotificationOut]  # stale nudges that still apply (most overdue first), then digests (newest first)
     unread: int
+
+
+# --- Audit trail (app/audit.py) ---------------------------------------------------------------------------
+
+JsonValue = str | int | float | bool | None
+
+
+class FieldChange(BaseModel):
+    field: str
+    redacted: bool = False  # sensitive: the log records that it changed, never the values
+    before: JsonValue = None
+    after: JsonValue = None
+    # Names for ids (a rep, a carrier), looked up when the history is read.
+    before_label: str | None = None
+    after_label: str | None = None
+
+
+class HistoryEvent(BaseModel):
+    id: uuid.UUID
+    occurred_at: datetime
+    actor: UserRef | None  # the person, when a person did it
+    actor_label: str | None  # otherwise the job or script ("stale-referrals"), or None for the system
+    action: AuditAction
+    entity: str  # the table: "referrals", "referral_steps", "activities", "partners", ...
+    entity_id: uuid.UUID
+    changes: list[FieldChange]

@@ -11,6 +11,7 @@ from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.audit import Actor, set_actor
 from app.config import settings
 from app.db import get_db
 from app.models import User
@@ -27,6 +28,7 @@ async def get_viewer(
     user = (await db.execute(select(User).where(User.id == x_dev_user, User.active))).scalar_one_or_none()
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not signed in")
+    set_actor(db, Actor.user(user.id))  # the audit trail records this person for what the request writes
     return user
 
 

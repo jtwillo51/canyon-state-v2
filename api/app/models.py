@@ -34,6 +34,9 @@ ContactMethod = Literal["In person", "Phone", "Email"]
 ListName = Literal["referrals", "partners"]
 # What the scheduled jobs (app/jobs/) tell people about.
 NotificationKind = Literal["stale_referral", "weekly_digest"]
+# The audit trail (app/audit.py): what happened, and who (or what) did it.
+AuditAction = Literal["insert", "update", "delete", "restore"]
+ActorKind = Literal["user", "job", "script", "system"]
 
 
 def one_of(column: str, values: type) -> str:
@@ -338,3 +341,39 @@ class Notification(Record, Base):
     # Kind-specific numbers (a digest's tallies, a nudge's last-touch date), validated by app/schemas.py.
     data: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
     read_at: Mapped[datetime | None]
+
+
+class AuditEvent(Base):
+    """One change to one row, recorded automatically by app/audit.py. Append-only: a database trigger
+    refuses UPDATE and DELETE on this table, and TRUNCATE outside the seed script.
+
+    Not a Record on purpose: an event is never edited or soft-deleted, so it has no updated_at or
+    deleted_at. No foreign keys either, so nothing can block or cascade into the log.
+    """
+
+    __tablename__ = "audit_events"
+    __table_args__ = (
+        CheckConstraint(one_of("action", AuditAction), name="action"),
+        CheckConstraint(one_of("actor_kind", ActorKind), name="actor_kind"),
+        CheckConstraint("(actor_kind = 'user') = (actor_id IS NOT NULL)", name="user_actor_has_id"),
+        # A record's history: its own events, and those of rows that belong to it.
+        Index("ix_audit_events_referral", "referral_id", "occurred_at", postgresql_where=text("referral_id IS NOT NULL")),
+        Index("ix_audit_events_partner", "partner_id", "occurred_at", postgresql_where=text("partner_id IS NOT NULL")),
+        Index("ix_audit_events_entity", "entity", "entity_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=text("gen_random_uuid()"))
+    # clock_timestamp(), not now(): now() is when the transaction began, so every event in one request would
+    # share a timestamp and a history couldn't be put in order.
+    occurred_at: Mapped[datetime] = mapped_column(server_default=func.clock_timestamp())
+    actor_kind: Mapped[str]
+    actor_id: Mapped[uuid.UUID | None]  # the person, when actor_kind is "user"
+    actor_label: Mapped[str | None]  # the job or script name otherwise
+    action: Mapped[str]
+    entity: Mapped[str]  # the table name
+    entity_id: Mapped[uuid.UUID]
+    # The record whose history this belongs to (see audit.SUBJECTS), so a page can show its history.
+    referral_id: Mapped[uuid.UUID | None]
+    partner_id: Mapped[uuid.UUID | None]
+    # {field: {"from": ..., "to": ...}}; sensitive fields are {"redacted": true} with no values.
+    changes: Mapped[dict[str, Any]] = mapped_column(JSONB)

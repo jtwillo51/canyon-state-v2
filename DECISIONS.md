@@ -462,3 +462,37 @@ still open with the agency (FIELD_QUESTIONS #1). These rules are decided for the
   idempotency, the visibility split and the endpoint's security. Checked by breaking the code: reading nudges
   without the reader's scoping, giving a rep the admin digest, and changing the dedupe key each run each failed
   their tests. Two browser tests cover the bell and the page for a rep and an admin.
+
+## Audit trail (2026-09-30)
+
+- **Captured automatically, for every table** (the log itself excepted): a SQLAlchemy `after_flush` hook
+  (`app/audit.py`) records each insert, update and soft delete with before/after per field, in the same
+  transaction as the change, so a change and its record commit or roll back together (a refused move leaves
+  nothing; tested). Endpoints call nothing, so none can forget. New tables are covered without a change.
+- **Actor:** the signed-in viewer (set in `get_viewer`), a job by name (`stale-referrals`), a script
+  (`run_jobs`), or "system". Soft deletes read as "delete" and "restore". The seed script alone turns recording off.
+- **Nothing skips it:** bulk `update()/insert()/delete()` statements on audited tables are refused at runtime;
+  the jobs' many-row inserts go through `audit.audited_insert`, which records what it wrote, and "mark read"
+  became an ordinary ORM change. A test also fails if `app/` contains raw SQL writes.
+- **Sensitive values are never copied into the log** (client name, address and birthday; "do not discuss" notes;
+  partner phone and email; user email; activity notes; notification payloads): the event says the field changed,
+  not what it held. The log shouldn't become a second store of personal data. A test fails if a redaction rule
+  names a column that doesn't exist (a typo would silently log the value).
+- **Append-only, enforced by the database:** a trigger refuses UPDATE and DELETE on `audit_events`, and TRUNCATE
+  unless the transaction sets `canyon.allow_audit_reset` (only the seed, which already refuses anything but
+  localhost or the demo). With real data in production, the next step is a separate database role for the app
+  without UPDATE/DELETE/TRUNCATE on the table, so even a compromised app can't rewrite history.
+- **Visible to anyone who can see the record:** a "Change history" section (collapsed) on referral and partner
+  pages. A referral's history (its changes, step credits and activity) follows referral access; someone else's
+  is a 404. A partner's history is shared like the partner, but holds **only the partner's own changes**, never
+  its referrals', which would reveal colleagues' clients. Ids read as names (reps, carriers), including people
+  who've since been deactivated.
+- **Found on the way:** `occurred_at` defaulted to `now()`, which in Postgres is when the *transaction* began:
+  every event in one request shared a timestamp, so a history couldn't be ordered. It's `clock_timestamp()`
+  (the moment of the write). Also: editing an already-applied migration needs every database re-migrated;
+  `canyon_test` kept the old default until it was downgraded and upgraded again.
+- Tests: `test_audit.py` (coverage, redaction, attribution, soft delete, jobs, bypass refusal, append-only,
+  the seed's reset, history visibility and labels), matrix rows for both history endpoints, and a browser test
+  that edits a partner inline and finds the change in its history. Checked by breaking the code: removing a
+  redaction, allowing bulk bypass, leaking referral events into partner history, and dropping the actor each
+  failed their tests.

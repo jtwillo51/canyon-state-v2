@@ -9,7 +9,7 @@ import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Response, status
-from sqlalchemy import select, update
+from sqlalchemy import select
 
 from app.auth import DB, Viewer
 from app.clock import agency_today
@@ -70,23 +70,23 @@ async def list_notifications(viewer: Viewer, db: DB) -> NotificationPage:
 
 @router.post("/{notification_id}/read", status_code=status.HTTP_204_NO_CONTENT)
 async def mark_read(notification_id: uuid.UUID, viewer: Viewer, db: DB) -> Response:
-    result = await db.execute(
-        update(Notification)
-        .where(Notification.id == notification_id, Notification.user_id == viewer.id, Notification.deleted_at.is_(None))
-        .values(read_at=datetime.now(UTC))
-    )  # fmt: skip
-    if result.rowcount == 0:
+    note = (
+        await db.execute(select(Notification).where(Notification.id == notification_id, Notification.user_id == viewer.id))
+    ).scalar_one_or_none()
+    if note is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Notification not found")  # also for someone else's
-    await db.commit()
+    if note.read_at is None:
+        note.read_at = datetime.now(UTC)  # an ORM change, so the audit trail records it
+        await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/read-all", status_code=status.HTTP_204_NO_CONTENT)
 async def mark_all_read(viewer: Viewer, db: DB) -> Response:
-    await db.execute(
-        update(Notification)
-        .where(Notification.user_id == viewer.id, Notification.read_at.is_(None), Notification.deleted_at.is_(None))
-        .values(read_at=datetime.now(UTC))
-    )  # fmt: skip
+    # One by one through the ORM (not a bulk UPDATE) so each is recorded; there are at most a few dozen.
+    unread = await db.execute(select(Notification).where(Notification.user_id == viewer.id, Notification.read_at.is_(None)))
+    now = datetime.now(UTC)
+    for note in unread.scalars():
+        note.read_at = now
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -48,7 +48,9 @@ stale API client.
 2. **The API is the authority on access.** Every rule about who may see or change what is enforced in `api/`,
    and tested there. The web app only mirrors rules to decide what to *show*; never rely on it to protect data.
 3. **Every endpoint is in the access matrix** (`api/tests/test_access_matrix.py`); a guard test fails otherwise.
-4. **Secrets stay out:** `.env` files are git-ignored and edited by the owner only (a hook blocks edits).
+4. **Every write is audited.** Change data through ORM objects (or `audit.audited_insert`); bulk
+   UPDATE/INSERT/DELETE statements on audited tables are refused, and raw SQL writes aren't used in `app/`.
+5. **Secrets stay out:** `.env` files are git-ignored and edited by the owner only (a hook blocks edits).
    Change `.env.example` and say what to set.
 
 ## Running it (Windows; commands work from Git Bash or PowerShell)

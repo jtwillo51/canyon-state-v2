@@ -79,6 +79,7 @@ CASES = [
     # --- Partners: shared by the whole team -----------------------------------------------------------
     Case("GET", "/partners", everyone(), "partners are shared; money inside is scoped (test_partner_list)"),
     Case("GET", "/partners/{partner_id}", everyone(), "partners are shared"),
+    Case("GET", "/partners/{partner_id}/history", everyone(), "shared, and holds only the partner's own changes (test_audit)"),
     Case("PATCH", "/partners/{partner_id}", everyone(), "shared facts anyone may fix", body=just({"territory": "East Valley"})),
     Case(
         "PATCH", "/partners/{partner_id}", admins_only(), "only admins reassign the primary rep",
@@ -91,6 +92,7 @@ CASES = [
     Case("PATCH", "/referrals/{referral_id}", owner_and_admins(), "edits before bind", body=just({"line_of_business": "Auto"})),
     Case("POST", "/referrals/{referral_id}/status", owner_and_admins(), "moving it on the board", body=status_move),
     Case("GET", "/referrals/{referral_id}/activities", owner_and_admins(), "its timeline"),
+    Case("GET", "/referrals/{referral_id}/history", owner_and_admins(), "its change history, like the referral itself"),
     Case("POST", "/referrals/{referral_id}/activities", owner_and_admins(201), "logging a touch", body=activity),
     # --- Progress and goals -------------------------------------------------------------------------
     Case("GET", "/progress", everyone(), "scoped inside: a rep sees only their own numbers (test_progress)"),

@@ -19,6 +19,7 @@ from random import Random
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
 
+from app import audit
 from app.config import settings
 from app.db import SessionLocal, engine
 from app.models import (
@@ -266,6 +267,11 @@ async def main() -> None:
     rows = build()
     tables = ", ".join(t.name for t in Base.metadata.sorted_tables)
     async with SessionLocal() as session:
+        # A fresh synthetic world: not recorded in the audit trail (there's no one to attribute it to), and the
+        # old trail goes with the old data. The audit table refuses TRUNCATE unless this setting is on, for this
+        # transaction only; the check above means that only ever happens locally or on the demo.
+        audit.disable(session, "seed")
+        await session.execute(text("SET LOCAL canyon.allow_audit_reset = 'on'"))
         await session.execute(text(f"TRUNCATE {tables}"))
         session.add_all(rows)
         await session.commit()

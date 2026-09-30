@@ -11,6 +11,7 @@ import asyncio
 
 from sqlalchemy import select
 
+from app.audit import Actor, set_actor
 from app.clock import agency_today
 from app.db import SessionLocal, engine
 from app.jobs.digest import build_digest, store_digest
@@ -21,6 +22,7 @@ from app.models import User
 async def main() -> None:
     today = agency_today()
     async with SessionLocal() as db:
+        set_actor(db, Actor.script("run_jobs"))
         nudges = await notify_stale(db, today)
         users = (await db.execute(select(User).where(User.active).order_by(User.name))).scalars().all()
         digests = sum([await store_digest(db, u.id, await build_digest(db, u, today)) for u in users])

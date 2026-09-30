@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import ORMExecuteState, Session, with_loader_criteria
 
 from app.config import settings
+import app.audit  # noqa: F401  (registers the audit-trail hooks on every session)
 from app.models import SoftDelete
 
 # One engine per process: it owns the connection pool.

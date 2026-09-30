@@ -7,9 +7,9 @@ logged activity), the same measure as the Referrals list's "Stale" view.
 from datetime import date, timedelta
 
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.audit import audited_insert
 from app.models import Notification, Referral, ReferralStepCredit, User
 from app.pipeline import OPEN
 
@@ -48,9 +48,10 @@ async def notify_stale(db: AsyncSession, today: date) -> int:
     if not rows:
         return 0
 
-    stmt = (
-        insert(Notification)
-        .values([
+    written = await audited_insert(
+        db,
+        Notification,
+        [
             {
                 "user_id": rep_id,
                 "kind": "stale_referral",
@@ -59,10 +60,9 @@ async def notify_stale(db: AsyncSession, today: date) -> int:
                 "data": {"last_touch": last_touch.isoformat()},
             }
             for referral_id, last_touch, rep_id in rows
-        ])
-        .on_conflict_do_nothing(index_elements=["user_id", "dedupe_key"], index_where=Notification.deleted_at.is_(None))
-        .returning(Notification.id)
-    )  # fmt: skip
-    written = len((await db.execute(stmt)).all())
+        ],
+        skip_duplicates_on=["user_id", "dedupe_key"],
+        where=Notification.deleted_at.is_(None),
+    )
     await db.commit()
-    return written
+    return len(written)
