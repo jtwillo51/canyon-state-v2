@@ -23,6 +23,8 @@ Arizona's flag colors. The tokens are in `globals.css` and usable as Tailwind cl
 - **Numbers are IBM Plex Mono** (`font-mono`, which also sets tabular figures). DataGrid does this for
   right-aligned columns automatically. Words are IBM Plex Sans.
 - Radius is small (`--radius` 0.375rem). Cards are white (`bg-card`) on the warm paper background.
+- Page width is one token, `max-w-app` (1440px, `--container-app` in globals.css). Data grids cap their height at
+  70% of the window and scroll inside, with the header pinned, so the sideways scrollbar is always reachable.
 - Headers on the blue band use `text-brand-mute` for secondary text, never `text-muted-foreground`.
 - Light mode only for now; dark mode is an open decision.
 - Don't add a control that does nothing yet (the header search waits for the command palette).

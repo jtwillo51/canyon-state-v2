@@ -5,7 +5,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <>
       <header className="bg-brand">
-        <div className="mx-auto flex max-w-6xl px-4">
+        <div className="mx-auto flex max-w-app px-4">
           <Logo href="/sign-in" />
         </div>
       </header>

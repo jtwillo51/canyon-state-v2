@@ -63,7 +63,7 @@ export function ProgressStrip({ progress }: { progress: Progress }) {
 
   return (
     <section aria-label="Progress this month" className="relative border-b-3 border-copper bg-brand-deep text-white">
-      <div className="mx-auto grid max-w-6xl md:grid-cols-[180px_repeat(3,minmax(0,1fr))_auto]">
+      <div className="mx-auto grid max-w-app md:grid-cols-[180px_repeat(3,minmax(0,1fr))_auto]">
         <div className={`flex gap-2 px-4 ${collapsed ? "items-center py-1.5 md:col-span-4" : "flex-col justify-center py-2.5"}`}>
           <Link href="/dashboard" className="text-[11px] font-medium tracking-wider text-copper-soft uppercase hover:underline">
             {monthName}

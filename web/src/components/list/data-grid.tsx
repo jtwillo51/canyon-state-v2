@@ -142,9 +142,10 @@ export function DataGrid<T extends RowData>(props: Props<T>) {
         </details>
       )}
 
-      <div className="overflow-x-auto rounded-md border bg-card">
+      {/* Capped height with its own scrolling, so the sideways scrollbar is always on screen; the header stays pinned. */}
+      <div className="max-h-[70vh] overflow-auto rounded-md border bg-card">
         <table className="w-full text-sm">
-          <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
+          <thead className="sticky top-0 z-10 bg-muted text-left text-xs text-muted-foreground shadow-[inset_0_-1px_0_var(--border)]">
             {table.getHeaderGroups().map((group) => (
               <tr key={group.id}>
                 {group.headers.map((header) => {

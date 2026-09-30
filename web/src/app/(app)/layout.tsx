@@ -35,7 +35,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <>
       <header className="bg-brand text-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-stretch gap-x-6 px-4">
+        <div className="mx-auto flex max-w-app flex-wrap items-stretch gap-x-6 px-4">
           <Logo />
           <AppNav isAdmin={me?.role === "admin"} />
           <div className="ml-auto flex items-center gap-3 py-2">
@@ -65,7 +65,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {/* One provider around the strip and the page, so the dashboard and the strip share the switch. */}
       <ProgressPrefsProvider compare={prefs.compare} collapsed={prefs.collapsed}>
         {progress && <ProgressStrip progress={progress} />}
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
+        <main className="mx-auto w-full max-w-app flex-1 px-4 py-6">{children}</main>
       </ProgressPrefsProvider>
     </>
   );
