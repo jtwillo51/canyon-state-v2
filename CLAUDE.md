@@ -73,4 +73,7 @@ cd web && npm run dev                                                    # web o
 | Anything in `web/` | `cd web && npm run typecheck && npm run lint` |
 | Behavior a user sees, or who sees what | `cd web && npm run e2e` (starts its own servers and database; set `UV` if uv isn't on PATH) |
 
+CI (`.github/workflows/ci.yml`) runs all of the above on every push to `main` and every pull request,
+including a check that the committed API client matches the API. Keep it green.
+
 A test that has never failed proves little: when adding a rule's test, break the rule once and watch it fail.

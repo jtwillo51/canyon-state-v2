@@ -1,0 +1,112 @@
+# Every push to main and every pull request: prove the API, the web app and the two together.
+# Three jobs in parallel. All data is synthetic (the seed and the test fixtures); no secrets are used.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same branch cancels the run it replaces.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read-only token: CI checks code, it never writes to the repository.
+permissions:
+  contents: read
+
+env:
+  # A throwaway Postgres in a service container; conftest.py and the e2e setup derive
+  # canyon_test and canyon_e2e from it and refuse any non-local database.
+  DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/canyon_dev
+
+jobs:
+  api:
+    name: API tests (pytest)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+      - run: uv sync --frozen
+      - run: uv run python -m scripts.create_databases
+      - run: uv run pytest
+
+  web:
+    name: Web (lint, types, build, API client in sync)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: astral-sh/setup-uv@v10
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - name: Committed API client matches the API
+        # Export the schema straight from the app (no server, no database), regenerate the
+        # TypeScript client from it, and fail if the committed file differs.
+        run: |
+          (cd ../api && uv sync --frozen --no-dev && uv run --no-dev python -m scripts.export_openapi "$RUNNER_TEMP/openapi.json")
+          npx openapi-typescript "$RUNNER_TEMP/openapi.json" -o src/lib/api/schema.d.ts
+          git diff --exit-code -- src/lib/api/schema.d.ts || {
+            echo "::error::web/src/lib/api/schema.d.ts is stale. Run 'npm run gen:api' with the API running and commit it."
+            exit 1
+          }
+      - run: npm run build
+        env:
+          API_URL: http://localhost:8000 # read per request; nothing calls it during the build
+
+  e2e:
+    name: Browser tests (Playwright)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: astral-sh/setup-uv@v10
+      - run: npm ci
+      - run: (cd ../api && uv sync --frozen)
+      - run: npx playwright install --with-deps chromium
+      # Starts its own API (:8100, reseeding canyon_e2e) and web server (:3100); see playwright.config.ts.
+      - run: npm run e2e
+      - name: Keep the report and traces when a test fails
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            web/playwright-report/
+            web/test-results/
+          retention-days: 14

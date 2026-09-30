@@ -401,3 +401,17 @@ still open with the agency (FIELD_QUESTIONS #1). These rules are decided for the
   anything under `private-data` and editing `.env` files; after an API contract edit, remind Claude to
   regenerate the TypeScript client and, for a new endpoint, to add its access-matrix row. No format-on-save
   or tests-on-stop hooks (chosen against).
+
+## CI (2026-09-30)
+
+- **GitHub Actions on every push to `main` and every pull request** (`.github/workflows/ci.yml`), three jobs in
+  parallel: **API** (pytest against a Postgres 17 service container), **Web** (lint, typecheck, production
+  build, and the API client check), **E2E** (the Playwright suite on its own seeded database; the report and
+  traces are kept as an artifact when a test fails).
+- **The committed TypeScript client must match the API.** `api/scripts/export_openapi.py` writes the schema
+  straight from the app (no server, no database); CI regenerates `schema.d.ts` from it and fails on any
+  difference. Checked by adding a schema field without regenerating: the check failed.
+- **Least privilege:** the workflow token is read-only (`permissions: contents: read`); no secrets are used;
+  all data is synthetic. A newer push cancels the run it replaces.
+- **Node 24** (the current LTS line) in CI; local development happens to run Node 23.
+- The production build needs no API: every page renders per request, so nothing is fetched at build time.
