@@ -496,3 +496,49 @@ still open with the agency (FIELD_QUESTIONS #1). These rules are decided for the
   that edits a partner inline and finds the change in its history. Checked by breaking the code: removing a
   redaction, allowing bulk bypass, leaking referral events into partner history, and dropping the actor each
   failed their tests.
+
+## Real sign-in (2026-09-30)
+
+- **Email and password, done right** (chosen over Google sign-in, which depends on the agency's accounts, and
+  passkeys, the most work). Builds on v1's decision: accounts are managed by admins only, no self-signup.
+- **Passwords:** Argon2id with RFC 9106's recommended profile (64 MiB, 3 passes), stated explicitly; rehashed at
+  sign-in if settings strengthen. **NIST SP 800-63B rules:** at least 15 characters (the current minimum for a
+  single factor), up to 128, anything printable, no composition rules, no forced rotation, and a check against
+  predictable choices (common words, the agency's own name and places, the person's name or email).
+- **Server-side sessions** (chosen over JWTs, which can't be revoked early): a 256-bit token in an httpOnly cookie
+  (`__Host-session` in production: HTTPS only, this host only, whole site; SameSite=Lax). The API stores only its
+  SHA-256, so a leaked database can't be used to sign in. A session ends after 12 hours (a workday), 2 idle hours,
+  or at once on sign-out, "sign out everywhere", a password change or reset, or deactivation.
+- **One-time links for passwords** (chosen over admin-set temporary passwords): an admin adds a person and gets a
+  48-hour, single-use link to hand over; resets work the same way. Admins never see or choose a password. Making a
+  new link voids the old one. The token rides in the URL's `#fragment` (never sent to a server, so it stays out of
+  logs and Referer headers), is dropped from the address bar once read, and only its hash is stored.
+- **Guessing is slowed** before any password is checked: 5 failures per account in 15 minutes (keyed by a hash of
+  the email typed, so made-up emails pause the same way and a pause reveals nothing), and a global ceiling of 100
+  failures in 5 minutes against password spraying (a real person may wait a few minutes during an attack).
+  Every failure is the same message and takes about as long (a dummy hash is verified for unknown emails).
+  Changing a password needs the current one and counts as an attempt. Attempts older than 30 days are pruned daily.
+- **Team page, admins only**, enforced by a router-level dependency: found in the access matrix, a rep sending a
+  bad body got a detailed validation error (confirming the endpoint exists) because FastAPI validates the body
+  before the handler runs. Now it's a plain 404 whatever they send. Admins can't deactivate or demote themselves.
+- **"View as" stays for development and the demo only.** A session always wins; a bad session never falls back to
+  the dev header. With neither DEV_AUTH nor DEMO_MODE set, sign-in is the only way in.
+- **The first admin:** `scripts/make_link.py`, run from the API server's shell (already the most privileged place),
+  creates an admin if needed and prints a one-time link. Also the way back in if every admin is locked out.
+- **Web:** route groups `(app)` and `(auth)`: the sign-in pages load nothing that needs a session, so an expired
+  session can't redirect them to themselves. Any 401 from the API redirects to sign-in ("your session ended").
+  Account page (change password, sign out everywhere); Team page with a copy-once link box.
+- **Audit:** sessions and links are audited (sign-ins, sign-outs, resets appear in the trail); password and token
+  hashes are redacted; a session's `last_seen_at` bookkeeping is ignored so requests don't flood the log. The
+  attempt log itself is the one other table not audited (it's already a record of every attempt), listed with its
+  reason.
+- **Found by running it in a browser:** React runs effects twice in development, and the second run lost the link
+  token after the first had cleaned the address bar (now read once into a ref). React 19's form reset cleared the
+  email after a wrong password (now sent back with the error as the field's default).
+- Tests: `test_auth.py` (password rules, uniform failures, hashed storage, no dev-header fallback, both rate limits,
+  session lifetime, sign-out everywhere, deactivation, password change, links, team safeguards), matrix rows for
+  all nine endpoints with probes for the public ones, and browser tests for the whole lifecycle (add a person,
+  set a password through the link, sign out, fail, sign in, reused link refused, ended session, reps and Team).
+  Checked by breaking the code: removing the account limit, letting a bad token fall back to the dev header,
+  making sign-out-everywhere a no-op, storing tokens in plain text, dropping the idle timeout, and making links
+  reusable each failed their tests.

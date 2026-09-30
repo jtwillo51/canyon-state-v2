@@ -16,7 +16,7 @@ from datetime import date
 from typing import Callable
 
 import inngest
-from sqlalchemy import select
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit import Actor, set_actor
@@ -25,7 +25,7 @@ from app.config import settings
 from app.db import SessionLocal
 from app.jobs.digest import build_digest, store_digest
 from app.jobs.stale import notify_stale
-from app.models import User
+from app.models import LoginAttempt, User
 
 client = inngest.Inngest(
     app_id="canyon-state",
@@ -55,10 +55,19 @@ async def _notify_stale(today: str) -> int:
         return await notify_stale(db, date.fromisoformat(today))
 
 
+async def _prune_login_attempts() -> int:
+    """Sign-in attempts only matter for minutes (rate limiting); keep a month for investigating, then drop them."""
+    async with session_factory() as db:
+        result = await db.execute(delete(LoginAttempt).where(LoginAttempt.attempted_at < func.now() - text("interval '30 days'")))
+        await db.commit()
+        return result.rowcount or 0
+
+
 async def stale_referrals(ctx: inngest.Context) -> dict[str, int]:
     today = await ctx.step.run("agency-today", _today)
     written = await ctx.step.run("notify-reps", _notify_stale, today)
-    return {"new_nudges": written}
+    pruned = await ctx.step.run("prune-login-attempts", _prune_login_attempts)  # daily housekeeping, same run
+    return {"new_nudges": written, "pruned_login_attempts": pruned}
 
 
 # --- Weekly digest: Monday morning, one step per person ------------------------------------------------

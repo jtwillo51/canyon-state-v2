@@ -8,12 +8,13 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, PlainSerializer, field_validator
 
 from app.models import (
     AuditAction,
     ContactMethod,
     LineOfBusiness,
+    LinkPurpose,
     ListName,
     NotificationKind,
     PartnerType,
@@ -405,3 +406,80 @@ class HistoryEvent(BaseModel):
     entity: str  # the table: "referrals", "referral_steps", "activities", "partners", ...
     entity_id: uuid.UUID
     changes: list[FieldChange]
+
+
+# --- Sign-in and accounts (routers/auth.py, routers/team.py) -------------------------------------------------
+
+# Long enough for any real password; short enough that nobody can make the server hash a megabyte.
+PasswordIn = Annotated[str, Field(min_length=1, max_length=256)]
+
+
+class SignIn(BaseModel):
+    email: Annotated[str, Field(min_length=3, max_length=254)]
+    password: PasswordIn
+
+
+class SessionOut(BaseModel):
+    """A new session. The token is shown this once; the web app keeps it in an httpOnly cookie."""
+
+    token: str
+    expires_at: datetime
+    user: Me
+
+
+class PasswordChange(BaseModel):
+    current_password: PasswordIn
+    new_password: PasswordIn
+
+
+class LinkToken(BaseModel):
+    token: Annotated[str, Field(min_length=20, max_length=100)]
+
+
+class LinkInfo(BaseModel):
+    purpose: LinkPurpose
+    name: str  # "Set your password, Jordan"
+
+
+class LinkRedeem(LinkToken):
+    password: PasswordIn
+
+
+class PersonOut(Schema):
+    """A person as admins see them on the Team page. Never includes password hashes or tokens."""
+
+    id: uuid.UUID
+    name: str
+    email: str
+    role: Role
+    active: bool
+    has_password: bool
+    last_sign_in_at: datetime | None
+
+
+class PersonIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Annotated[str, Field(min_length=1, max_length=100)]
+    email: EmailStr
+    role: Role
+
+
+class PersonPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    active: bool | None = None
+    role: Role | None = None
+
+
+class LinkOut(BaseModel):
+    """A one-time link's token. The web app turns it into a URL; the API never stores the token itself."""
+
+    token: str
+    purpose: LinkPurpose
+    expires_at: datetime
+
+
+class PersonCreated(BaseModel):
+    person: PersonOut
+    link: LinkOut

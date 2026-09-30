@@ -65,20 +65,29 @@ def disable(session: AsyncSession | Session, reason: str) -> None:
 
 # --- What's audited, and how ------------------------------------------------------------------------------
 
-# Every table, the log itself excepted (tests/test_audit.py fails if a new table isn't listed here).
-AUDITED = frozenset(t for t in Base.metadata.tables if t != AuditEvent.__tablename__)
+# Tables not audited, each with its reason. Everything else is, including tables added later.
+EXCLUDED = {
+    AuditEvent.__tablename__: "the log itself",
+    "login_attempts": "a security log of its own: every row is already a record of an attempt",
+}
+AUDITED = frozenset(t for t in Base.metadata.tables if t not in EXCLUDED)
 
 # Values never copied into the log: personal data and free text that may hold it.
 REDACTED: dict[str, frozenset[str]] = {
     "referrals": frozenset({"client_name", "client_address", "client_birthday", "sensitive_items"}),
     "partners": frozenset({"phone", "email", "sensitive_items"}),
-    "users": frozenset({"email"}),
+    "users": frozenset({"email", "password_hash"}),
+    "sessions": frozenset({"token_hash"}),
+    "account_links": frozenset({"token_hash"}),
     "activities": frozenset({"notes"}),
     "notifications": frozenset({"data"}),  # an admin's digest holds every rep's numbers
 }
 
 # Timestamps are the event's own occurred_at; ids are the event's entity_id.
 _SKIP = frozenset({"id", "created_at", "updated_at"})
+
+# Bookkeeping that changes constantly and means nothing on its own: a change to only these isn't an event.
+IGNORED: dict[str, frozenset[str]] = {"sessions": frozenset({"last_seen_at"})}
 
 Getter = Callable[[str], Any]
 
@@ -125,8 +134,8 @@ def _column_changes(obj: Any, table: str, inserting: bool) -> dict[str, Any]:
     state = inspect(obj)
     out: dict[str, Any] = {}
     for attr in state.mapper.column_attrs:
-        if attr.key in _SKIP or not isinstance(attr.columns[0], Column):  # skip computed ones (last_touch)
-            continue
+        if attr.key in _SKIP or attr.key in IGNORED.get(table, ()) or not isinstance(attr.columns[0], Column):
+            continue  # (the Column check skips computed attributes such as last_touch)
         history = state.attrs[attr.key].history
         if not history.added and not (not inserting and history.deleted):
             continue

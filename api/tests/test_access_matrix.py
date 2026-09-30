@@ -22,6 +22,7 @@ import app as app_package
 from app.clock import agency_today
 from app.main import app
 from app.models import Notification, SavedView, User
+from app.security import hash_password
 from tests.conftest import World, as_user
 
 pytestmark = pytest.mark.anyio
@@ -50,6 +51,11 @@ def everyone(ok: int = 200) -> dict[str, int]:
 def admins_only(ok: int = 200) -> dict[str, int]:
     """Reps are refused with the API's field error (422), which the UI shows next to the field."""
     return {"nobody": 401, "owner": 422, "other_rep": 422, "admin": ok}
+
+
+def admins_only_hidden(ok: int = 200) -> dict[str, int]:
+    """An admin feature that doesn't exist for anyone else: a 404, not a refusal."""
+    return {"nobody": 401, "owner": 404, "other_rep": 404, "admin": ok}
 
 
 def owner_and_admins(ok: int = 200) -> dict[str, int]:
@@ -112,12 +118,43 @@ CASES = [
         "POST", "/notifications/{notification_id}/read", {"nobody": 401, "owner": 204, "other_rep": 404, "admin": 404},
         "a notification is private, even from admins",
     ),  # fmt: skip
+
+    # --- Signing in and out (see test_auth.py for the rules themselves) --------------------------------------
+    Case("POST", "/auth/sign-out", everyone(204), "ends the caller's own session"),
+    Case("POST", "/auth/sign-out-everywhere", everyone(204), "ends the caller's own sessions"),
+    Case(
+        "POST", "/auth/password", {"nobody": 401, "owner": 422, "other_rep": 422, "admin": 422},
+        "needs a real password session (these askers use the dev header)",
+        body=just({"current_password": "anything", "new_password": "anything"}),
+    ),  # fmt: skip
+    # --- Team: admins only, invisible to everyone else ------------------------------------------------------
+    Case("GET", "/team", admins_only_hidden(), "the Team page"),
+    Case(
+        "POST", "/team", admins_only_hidden(201), "adding a person",
+        body=lambda world, actor: {"name": "New Person", "email": f"new-{actor}@example.com", "role": "rep"},
+    ),  # fmt: skip
+    Case("POST", "/team/{user_id}/link", admins_only_hidden(201), "a setup or reset link"),
+    Case("PATCH", "/team/{user_id}", admins_only_hidden(), "role and deactivation", body=just({"role": "rep"})),
 ]
 
 # Endpoints that deliberately need no sign-in, and why.
 PUBLIC = {
     ("GET", "/health"): "liveness check for the host; returns no data",
     ("GET", "/dev/users"): "the dev 'View as' list; 404 unless DEV_AUTH is on (test_access)",
+    ("POST", "/auth/sign-in"): "signing in; rate-limited and uniform on failure (test_auth)",
+    ("POST", "/auth/links/check"): "a one-time link's own 256-bit token is the credential (test_auth)",
+    ("POST", "/auth/links/redeem"): "a one-time link's own 256-bit token is the credential (test_auth)",
+}
+
+TEST_PASSWORD = "purple tractor lemonade rain"
+
+# How each public endpoint is shown to answer without a session: (body, expected status). Not 401 is the point.
+PUBLIC_PROBES: dict[tuple[str, str], tuple[dict[str, Any] | None, int]] = {
+    ("GET", "/health"): (None, 200),
+    ("GET", "/dev/users"): (None, 200),
+    ("POST", "/auth/sign-in"): ({"email": "tessa@example.test", "password": TEST_PASSWORD}, 200),
+    ("POST", "/auth/links/check"): ({"token": "x" * 43}, 404),  # no such link: "expired or used", not "sign in"
+    ("POST", "/auth/links/redeem"): ({"token": "x" * 43, "password": TEST_PASSWORD}, 404),
 }
 
 
@@ -163,9 +200,12 @@ async def test_access(api: httpx.AsyncClient, db: AsyncSession, world: World, ca
     assert r.status_code == case.expect[actor], f"{actor} got {r.status_code}: {r.text[:200]}"
 
 
-async def test_public_endpoints_answer_without_sign_in(api: httpx.AsyncClient) -> None:
-    for method, path in PUBLIC:
-        assert (await api.request(method, path)).status_code == 200, path
+async def test_public_endpoints_answer_without_sign_in(api: httpx.AsyncClient, db: AsyncSession, world: World) -> None:
+    world.tessa.password_hash = hash_password(TEST_PASSWORD)
+    await db.flush()
+    assert set(PUBLIC_PROBES) == set(PUBLIC)
+    for (method, path), (body, expected) in PUBLIC_PROBES.items():
+        assert (await api.request(method, path, json=body)).status_code == expected, path
 
 
 HTTP_METHODS = {"get", "post", "put", "patch", "delete"}

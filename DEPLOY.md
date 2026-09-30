@@ -1,7 +1,7 @@
 # Deploying the public demo
 
 Three free services: **Neon** (Postgres), **Render** (the FastAPI API) and **Vercel** (the Next.js app).
-The demo runs in `DEMO_MODE`: a "View as" switcher instead of sign-in, a banner saying the data is
+The demo runs in `DEMO_MODE`: a "View as" switcher alongside sign-in, a banner saying the data is
 fictional, and a nightly reseed that undoes whatever visitors change.
 
 > **Synthetic data only.** Demo mode has no real sign-in. Never point it at a database that holds the
@@ -55,3 +55,16 @@ link yourself shortly before sending it to someone.
 Pushing to `main` redeploys both: Render re-runs the build (including migrations) and Vercel rebuilds
 the web app. After an API change, regenerate the web types locally (`npm run gen:api` in `web/`) and commit
 `schema.d.ts` with it.
+
+## A real deployment (not the demo)
+
+Real sign-in is the only way in when neither `DEV_AUTH` nor `DEMO_MODE` is set: leave both unset, and the "View as"
+header and its user list simply don't exist.
+
+1. Deploy the API and web app as above, without `DEMO_MODE` and without running the seed.
+2. From the API server's shell, create the first admin and get their one-time link:
+   `uv run python -m scripts.make_link dana@agency.example --name "Dana Whitfield" --site https://your-web-app`
+3. They open the link, choose a password, and add everyone else from the **Team** page.
+
+The web app must be served over HTTPS in production: the session cookie is `__Host-`-prefixed, which browsers
+only accept on secure origins.

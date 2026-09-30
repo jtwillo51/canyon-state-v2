@@ -4,7 +4,7 @@ the endpoint Inngest calls is locked down."""
 import json
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -18,7 +18,7 @@ from app.config import Settings, settings
 from app.jobs import endpoint, functions
 from app.jobs.digest import build_digest, last_week, store_digest
 from app.jobs.stale import STALE_DAYS, notify_stale
-from app.models import Activity, Notification, User
+from app.models import Activity, LoginAttempt, Notification, User
 from tests.conftest import World
 
 pytestmark = pytest.mark.anyio
@@ -154,8 +154,12 @@ async def test_weekly_digest_job_writes_one_per_active_person(db: AsyncSession, 
 
 async def test_stale_job_nudges_through_its_steps(db: AsyncSession, world: World, job_session: None) -> None:
     ctx = FakeContext()
-    assert await functions.stale_referrals(ctx) == {"new_nudges": 2}  # type: ignore[arg-type]
-    assert ctx.step.ids == ["agency-today", "notify-reps"]
+    db.add_all([LoginAttempt(email_key="old", succeeded=False, attempted_at=datetime(2020, 1, 1, tzinfo=UTC)),
+                LoginAttempt(email_key="new", succeeded=False)])  # fmt: skip
+    await db.flush()
+    assert await functions.stale_referrals(ctx) == {"new_nudges": 2, "pruned_login_attempts": 1}  # type: ignore[arg-type]
+    assert ctx.step.ids == ["agency-today", "notify-reps", "prune-login-attempts"]
+    assert (await db.execute(select(LoginAttempt.email_key))).scalars().all() == ["new"]
 
 
 def test_schedules_run_on_the_agencys_clock() -> None:

@@ -1,14 +1,5 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
-import Link from "next/link";
-
-import { AppNav } from "@/components/app-nav";
-import { NotificationBell } from "@/components/notifications/bell";
-import { ProgressPrefsProvider } from "@/components/progress/prefs";
-import { ProgressStrip } from "@/components/progress/progress-strip";
-import { ViewAs } from "@/components/view-as";
-import { getNotifications } from "@/lib/notifications-server";
-import { getProgress, getProgressPrefs } from "@/lib/progress-server";
 
 import "./globals.css";
 
@@ -30,9 +21,10 @@ export const metadata: Metadata = {
   description: "Referral partner reporting for Canyon State Insurance",
 };
 
-export default async function RootLayout({ children }: LayoutProps<"/">) {
-  // Every page shows the progress strip and the bell, so the layout loads them (once per request, in parallel).
-  const [progress, prefs, notifications] = await Promise.all([getProgress(), getProgressPrefs(), getNotifications()]);
+// The shell every page shares. The app itself (header, progress strip, the sign-in requirement) is in
+// (app)/layout.tsx; the sign-in pages are in (auth)/ and load nothing that needs a session, so an expired
+// session can never bounce them back to themselves.
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${plexSans.variable} ${plexMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-background text-foreground">
@@ -43,26 +35,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <strong>View as</strong> to switch between an admin and a rep
           </p>
         )}
-        <header className="bg-brand text-white">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-stretch gap-x-6 px-4">
-            <Link href="/dashboard" className="flex items-center gap-2.5 py-2.5 text-[15px] font-semibold">
-              <span aria-hidden className="grid size-6 place-items-center rounded-[5px] bg-copper text-xs font-semibold text-brand">
-                CS
-              </span>
-              Canyon State
-            </Link>
-            <AppNav />
-            <div className="ml-auto flex items-center gap-3 py-2">
-              {notifications && <NotificationBell unread={notifications.unread} />}
-              <ViewAs />
-            </div>
-          </div>
-        </header>
-        {/* One provider around the strip and the page, so the dashboard and the strip share the switch. */}
-        <ProgressPrefsProvider compare={prefs.compare} collapsed={prefs.collapsed}>
-          {progress && <ProgressStrip progress={progress} />}
-          <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
-        </ProgressPrefsProvider>
+        {children}
       </body>
     </html>
   );

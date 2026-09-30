@@ -37,6 +37,8 @@ NotificationKind = Literal["stale_referral", "weekly_digest"]
 # The audit trail (app/audit.py): what happened, and who (or what) did it.
 AuditAction = Literal["insert", "update", "delete", "restore"]
 ActorKind = Literal["user", "job", "script", "system"]
+# One-time account links: a new person sets their first password, or anyone resets a forgotten one.
+LinkPurpose = Literal["setup", "reset"]
 
 
 def one_of(column: str, values: type) -> str:
@@ -109,6 +111,9 @@ class User(Record, Base):
     email: Mapped[str]
     role: Mapped[str]
     active: Mapped[bool] = mapped_column(server_default=text("true"))
+    # Argon2id (app/security.py). NULL until the person sets one through their setup link.
+    password_hash: Mapped[str | None]
+    password_changed_at: Mapped[datetime | None]
 
 
 class Partner(Record, Base):
@@ -377,3 +382,62 @@ class AuditEvent(Base):
     partner_id: Mapped[uuid.UUID | None]
     # {field: {"from": ..., "to": ...}}; sensitive fields are {"redacted": true} with no values.
     changes: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class UserSession(Record, Base):
+    """A signed-in browser. The token lives only in the person's cookie; this row holds its SHA-256.
+
+    Ends at whichever comes first: `expires_at` (a workday after sign-in), two idle hours (see auth.py), or
+    `revoked_at` (sign out, password change or reset, or deactivation).
+    """
+
+    __tablename__ = "sessions"
+    __table_args__ = (live_unique("sessions", "token_hash"), Index("ix_sessions_user_id", "user_id"))
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    token_hash: Mapped[str]
+    expires_at: Mapped[datetime]
+    last_seen_at: Mapped[datetime]
+    revoked_at: Mapped[datetime | None]
+    user_agent: Mapped[str] = mapped_column(server_default="")  # "which browser" for the person's own list
+
+    user: Mapped[User] = relationship()
+
+
+class AccountLink(Record, Base):
+    """A one-time link an admin hands someone to set their password (setup) or choose a new one (reset).
+
+    Only the token's SHA-256 is stored. Valid until `expires_at`, and only once; making a new link for the same
+    person voids any earlier unused one.
+    """
+
+    __tablename__ = "account_links"
+    __table_args__ = (
+        CheckConstraint(one_of("purpose", LinkPurpose), name="purpose"),
+        live_unique("account_links", "token_hash"),
+        Index("ix_account_links_user_id", "user_id"),
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    purpose: Mapped[str]
+    token_hash: Mapped[str]
+    expires_at: Mapped[datetime]
+    used_at: Mapped[datetime | None]
+    voided_at: Mapped[datetime | None]
+    created_by_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
+
+
+class LoginAttempt(Base):
+    """Every sign-in attempt, for rate limiting (app/routers/auth.py). A security log of its own, so it isn't
+    audited again. Keyed by a hash of the email typed, so attempts on made-up emails count the same way as
+    real ones (and the log holds no addresses)."""
+
+    __tablename__ = "login_attempts"
+    __table_args__ = (Index("ix_login_attempts_key_at", "email_key", "attempted_at"), Index("ix_login_attempts_at", "attempted_at"))
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=text("gen_random_uuid()"))
+    attempted_at: Mapped[datetime] = mapped_column(server_default=func.clock_timestamp())
+    email_key: Mapped[str]  # security.email_key()
+    succeeded: Mapped[bool]

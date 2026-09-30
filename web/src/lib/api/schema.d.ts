@@ -403,6 +403,175 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/sign-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign In */
+        post: operations["sign_in_auth_sign_in_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/sign-out": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign Out */
+        post: operations["sign_out_auth_sign_out_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/sign-out-everywhere": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign Out Everywhere */
+        post: operations["sign_out_everywhere_auth_sign_out_everywhere_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Password
+         * @description Change your own password. Needs a real session and the current password (which counts as a sign-in
+         *     attempt, so this can't be used to guess it). Every other session of yours ends.
+         */
+        post: operations["change_password_auth_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/links/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Link
+         * @description Whether a setup or reset link still works, and whose it is (to greet them). The token travels in the
+         *     body, never the URL, so it stays out of server logs.
+         */
+        post: operations["check_link_auth_links_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/links/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redeem Link
+         * @description Set a password through a one-time link, and sign in. Ends any other session the person had.
+         */
+        post: operations["redeem_link_auth_links_redeem_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List People */
+        get: operations["list_people_team_get"];
+        put?: never;
+        /** Add Person */
+        post: operations["add_person_team_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/team/{user_id}/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * New Link
+         * @description A setup link (no password yet) or a reset link (forgotten password). The old password keeps working
+         *     until the link is used; using it ends every session the person had.
+         */
+        post: operations["new_link_team__user_id__link_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/team/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Person */
+        patch: operations["update_person_team__user_id__patch"];
+        trace?: never;
+    };
     "/dev/users": {
         parameters: {
             query?: never;
@@ -639,6 +808,46 @@ export interface components {
             /** Changes */
             changes: components["schemas"]["FieldChange"][];
         };
+        /** LinkInfo */
+        LinkInfo: {
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "setup" | "reset";
+            /** Name */
+            name: string;
+        };
+        /**
+         * LinkOut
+         * @description A one-time link's token. The web app turns it into a URL; the API never stores the token itself.
+         */
+        LinkOut: {
+            /** Token */
+            token: string;
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "setup" | "reset";
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
+        /** LinkRedeem */
+        LinkRedeem: {
+            /** Token */
+            token: string;
+            /** Password */
+            password: string;
+        };
+        /** LinkToken */
+        LinkToken: {
+            /** Token */
+            token: string;
+        };
         /**
          * Me
          * @description The signed-in person.
@@ -824,6 +1033,66 @@ export interface components {
             /** Last Referred */
             last_referred: string | null;
         };
+        /** PasswordChange */
+        PasswordChange: {
+            /** Current Password */
+            current_password: string;
+            /** New Password */
+            new_password: string;
+        };
+        /** PersonCreated */
+        PersonCreated: {
+            person: components["schemas"]["PersonOut"];
+            link: components["schemas"]["LinkOut"];
+        };
+        /** PersonIn */
+        PersonIn: {
+            /** Name */
+            name: string;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "rep";
+        };
+        /**
+         * PersonOut
+         * @description A person as admins see them on the Team page. Never includes password hashes or tokens.
+         */
+        PersonOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "rep";
+            /** Active */
+            active: boolean;
+            /** Has Password */
+            has_password: boolean;
+            /** Last Sign In At */
+            last_sign_in_at: string | null;
+        };
+        /** PersonPatch */
+        PersonPatch: {
+            /** Active */
+            active?: boolean | null;
+            /** Role */
+            role?: ("admin" | "rep") | null;
+        };
         /** ProductionOut */
         ProductionOut: {
             /** Year */
@@ -990,6 +1259,27 @@ export interface components {
             query: string;
         };
         /**
+         * SessionOut
+         * @description A new session. The token is shown this once; the web app keeps it in an httpOnly cookie.
+         */
+        SessionOut: {
+            /** Token */
+            token: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            user: components["schemas"]["Me"];
+        };
+        /** SignIn */
+        SignIn: {
+            /** Email */
+            email: string;
+            /** Password */
+            password: string;
+        };
+        /**
          * StaleReferralRef
          * @description The referral a stale nudge points at, looked up at read time through the reader's own scoping.
          */
@@ -1109,6 +1399,7 @@ export interface operations {
             };
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -1140,6 +1431,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path: {
                 partner_id: string;
@@ -1173,6 +1465,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path: {
                 partner_id: string;
@@ -1223,6 +1516,7 @@ export interface operations {
             };
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -1254,6 +1548,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -1285,6 +1580,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path: {
                 referral_id: string;
@@ -1318,6 +1614,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path: {
                 referral_id: string;
@@ -1355,6 +1652,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path: {
                 referral_id: string;
@@ -1392,6 +1690,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path: {
                 referral_id: string;
@@ -1425,6 +1724,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path: {
                 referral_id: string;
@@ -1462,6 +1762,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -1493,6 +1794,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -1524,6 +1826,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -1557,6 +1860,7 @@ export interface operations {
             };
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -1588,6 +1892,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -1623,6 +1928,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path: {
                 view_id: string;
@@ -1654,6 +1960,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -1685,6 +1992,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -1716,6 +2024,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path: {
                 user_id: string;
@@ -1753,6 +2062,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -1788,6 +2098,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -1819,6 +2130,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path: {
                 notification_id: string;
@@ -1850,6 +2162,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -1879,6 +2192,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path: {
                 referral_id: string;
@@ -1912,6 +2226,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-dev-user"?: string | null;
+                authorization?: string | null;
             };
             path: {
                 partner_id: string;
@@ -1936,6 +2251,364 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sign_in_auth_sign_in_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "user-agent"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    sign_out_auth_sign_out_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sign_out_everywhere_auth_sign_out_everywhere_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_password_auth_password_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldErrorOut"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    check_link_auth_links_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkToken"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    redeem_link_auth_links_redeem_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "user-agent"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkRedeem"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldErrorOut"];
+                };
+            };
+        };
+    };
+    list_people_team_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_person_team_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonCreated"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldErrorOut"];
+                };
+            };
+        };
+    };
+    new_link_team__user_id__link_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldErrorOut"];
+                };
+            };
+        };
+    };
+    update_person_team__user_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-dev-user"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldErrorOut"];
                 };
             };
         };

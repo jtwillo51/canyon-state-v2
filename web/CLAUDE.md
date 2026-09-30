@@ -14,7 +14,11 @@ used here yet (the AGENTS.md above is Next's own note saying so).
   viewer, then refresh. They're public endpoints, which is fine because the API enforces every rule.
 - **Types come from the API:** `src/lib/api/schema.d.ts` is generated (`npm run gen:api` with the API
   running) and committed; `src/lib/api/types.ts` gives friendly names. Never hand-edit the generated file.
-- **"View as"** is a dev/demo cookie (`dev_user`) holding a user id. Real sign-in replaces it in Stage 3.
+- **Who's viewing:** a signed-in session (an httpOnly cookie, `__Host-session` in production, holding a token the
+  API stores only as a hash), or in development and the demo, the "View as" cookie (`dev_user`). A session always
+  wins (`lib/viewer.ts`). Any 401 from the API redirects to `/sign-in?expired=1` (`lib/api/client.ts`).
+- **Route groups:** `(app)/` is the app (its layout requires a viewer and loads the header data); `(auth)/` is
+  sign-in and set-password, which load nothing that needs a session, so they can never redirect to themselves.
 - **Lists keep their state in the URL** (filters, sort, columns, page). Interactive pieces only change the URL.
 
 ## Conventions
@@ -24,8 +28,8 @@ used here yet (the AGENTS.md above is Next's own note saying so).
   `new Date(string)`, which reads them as UTC midnight and shows the previous day in Arizona.
 - Tables use the shared `DataGrid` (`src/components/list/data-grid.tsx`, TanStack Table v9). Editable
   fields use `InlineField`, with `canEdit` + `readOnlyReason` for fields the viewer can't change.
-- React 19 resets a `<form action>` after it runs. Forms that must keep input after a refusal use
-  `onSubmit` + a transition.
+- Forms that must keep what was typed after a refusal (React 19 resets `<form action>`) send it back in the action's
+  state and use it as `defaultValue` (see the sign-in form), or use `onSubmit` + a transition.
 - UI copy is sentence case, plain and specific ("admins change this", not "Permission denied").
 
 ## Design

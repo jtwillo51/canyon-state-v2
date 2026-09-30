@@ -15,7 +15,7 @@ import {
 } from "@dnd-kit/core";
 import { useId, useOptimistic, useState, useTransition } from "react";
 
-import { moveReferral } from "@/app/pipeline/actions";
+import { moveReferral } from "@/app/(app)/pipeline/actions";
 import type { Me, Referral, ReferralStatus, StatusChange, UserRef } from "@/lib/api/types";
 import { COLUMNS, needsDialog, type PendingMove } from "@/lib/pipeline";
 

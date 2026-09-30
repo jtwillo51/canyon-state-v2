@@ -71,6 +71,9 @@ npx inngest-cli@1.45.1 dev --no-discovery -u http://localhost:8200/api/inngest  
 cd api && uv run python -m scripts.run_jobs                               # or: run both jobs once, no Inngest
 ```
 
+Signing in locally: seeded people have no passwords (use **View as**), or give someone a link:
+`cd api && uv run python -m scripts.make_link dana@example.test` prints a one-time setup link.
+
 `.claude/launch.json` in the parent folder has preview configs for all of these servers. If `uv` isn't on PATH, it's at
 `%LOCALAPPDATA%\Microsoft\WinGet\Packages\astral-sh.uv_*\uv.exe`.
 

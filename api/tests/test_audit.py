@@ -31,12 +31,13 @@ async def events(db: AsyncSession, entity: str, **where: Any) -> list[AuditEvent
 
 
 def test_every_table_is_audited() -> None:
-    """A new table is audited automatically; this fails only if the rule itself is changed."""
-    assert audit.AUDITED == set(Base.metadata.tables) - {"audit_events"}
+    """A new table is audited automatically; the only exceptions are listed, each with its reason."""
+    assert audit.AUDITED == set(Base.metadata.tables) - set(audit.EXCLUDED)
+    assert set(audit.EXCLUDED) == {"audit_events", "login_attempts"}
 
 
 def test_redaction_and_subject_rules_name_real_columns() -> None:
-    for table, fields in audit.REDACTED.items():
+    for table, fields in (audit.REDACTED | audit.IGNORED).items():
         assert fields <= set(Base.metadata.tables[table].c.keys()), table  # a typo would silently log the value
     assert set(audit.SUBJECTS) <= audit.AUDITED
 

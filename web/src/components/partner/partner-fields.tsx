@@ -4,7 +4,7 @@
 
 import { useOptimistic, useTransition } from "react";
 
-import { updatePartner } from "@/app/partners/[id]/actions";
+import { updatePartner } from "@/app/(app)/partners/[id]/actions";
 import { InlineField } from "@/components/inline-field";
 import type { Partner, UserRef } from "@/lib/api/types";
 

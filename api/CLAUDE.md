@@ -14,6 +14,7 @@ Run everything from `api/` with `uv run …`. Layout is a flat `app/` package:
 | `errors.py` | `FieldError(message, field)` → 422 `{message, field}` |
 | `clock.py` | `agency_today()`: the agency's date (America/Phoenix) |
 | `routers/` | one module per resource |
+| `auth.py`, `security.py` | sessions and who's asking; password hashing, password rules, tokens (see below) |
 | `audit.py` | the audit trail: records every write automatically (see below) |
 | `jobs/` | Inngest background jobs: `functions.py` (schedules, steps), `stale.py` and `digest.py` (logic), `endpoint.py` (/api/inngest) |
 
@@ -31,6 +32,19 @@ Run everything from `api/` with `uv run …`. Layout is a flat `app/` package:
 - **Partial updates act on `model_fields_set`:** `null` clears a field, omitting it leaves it alone.
 - **Response models name every field that leaves the API.** A column reaches the browser only if a schema lists it.
 - After changing schemas or routes, regenerate the web client (see the root CLAUDE.md).
+
+## Sign-in (`app/auth.py`, `app/security.py`, `routers/auth.py`, `routers/team.py`)
+
+- **Sessions:** `Authorization: Bearer <token>`; only the token's SHA-256 is stored. Ends after 12 hours, 2 idle
+  hours, or on sign-out, password change or reset, or deactivation (`end_sessions`). A bad token never falls back
+  to the dev header, and the dev header works only with DEV_AUTH or DEMO_MODE.
+- **Passwords:** Argon2id; NIST 800-63B rules in `security.password_problem` (15+ characters, no composition rules,
+  predictable words and the person's own name refused). Admins never see or set them: one-time links do.
+- **Rate limits** (`routers/auth.py`): per account key (a hash of the email typed, so made-up emails count the same)
+  and a global ceiling against spraying. Every failure is the same message. Password changes count as attempts.
+- **Team endpoints are admins-only through a router dependency**, so a rep gets a 404 before the body is validated
+  (a validation error would confirm the endpoint exists).
+- First admin on a fresh deployment: `uv run python -m scripts.make_link <email> --name "<name>" --site <url>`.
 
 ## Audit trail (`app/audit.py`)
 

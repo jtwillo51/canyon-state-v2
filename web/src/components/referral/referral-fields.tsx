@@ -2,7 +2,7 @@
 // The referral page's editable policy fields. The page works out what this viewer may edit; the API
 // enforces the same rules (anyone who can see it before bind; admins only once bound).
 
-import { updateReferral } from "@/app/referrals/[id]/actions";
+import { updateReferral } from "@/app/(app)/referrals/[id]/actions";
 import { InlineField } from "@/components/inline-field";
 import type { Referral } from "@/lib/api/types";
 import { day, money } from "@/lib/format";

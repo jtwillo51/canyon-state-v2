@@ -5,7 +5,7 @@
 
 import { useRef, useState, useTransition } from "react";
 
-import { logActivity } from "@/app/referrals/[id]/actions";
+import { logActivity } from "@/app/(app)/referrals/[id]/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
