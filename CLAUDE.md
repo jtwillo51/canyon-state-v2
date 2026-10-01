@@ -2,7 +2,7 @@
 
 Referral-partner reporting for a small Arizona insurance agency (Canyon State Insurance): which referral
 partners (realtors, lenders, advisors) send business, how it closes, and how each rep is doing against goal.
-A rebuild of the Vue v1 (`../canyon-state-web`, tagged `v1-vue`) on the stack below.
+A rebuild of an earlier Vue prototype (v1, kept in a separate private repo) on the stack below.
 
 ## The bar
 
@@ -36,7 +36,8 @@ stale API client.
   decision (a library, a data rule, a UI pattern), lay out the options briefly with a recommendation and
   **wait for their choice**. Explain what new commands and files do. Don't pick defaults silently.
 - **Don't guess business rules.** What counts as "closed", how close rate is measured, who sees what: if
-  `DECISIONS.md` doesn't settle it, ask. Unanswered agency questions live in `../FIELD_QUESTIONS.md`.
+  `DECISIONS.md` doesn't settle it, ask. Unanswered agency questions are tracked outside this repo
+  (cited in code and docs as "FIELD_QUESTIONS #n").
 - **Record decisions.** When something is decided, add it to `DECISIONS.md` under a dated section.
 - **Commit only when asked.** End commit messages with the Co-Authored-By line the session provides.
 
