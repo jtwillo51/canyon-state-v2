@@ -34,3 +34,6 @@ playwright-report/
 
 # Claude Code: personal overrides stay local (the shared config is .claude/settings.json)
 .claude/settings.local.json
+
+# oh-my-claudecode plugin state (local to each machine)
+.omc/

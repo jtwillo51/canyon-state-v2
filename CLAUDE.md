@@ -27,7 +27,7 @@ engineers will read closely. Hold every change to that standard:
 
 Also in `.claude/`: **rules** that load when you touch matching files (`rules/access-control.md`,
 `migrations.md`, `ui-design.md`, `e2e-tests.md`), **skills** for repeated workflows (`add-endpoint`,
-`add-migration`), and **hooks** (`settings.json`) that block access to secrets and real data and flag a
+`add-migration`, `give-me-a-summary`), and **hooks** (`settings.json`) that block access to secrets and real data and flag a
 stale API client.
 
 ## Working agreements
