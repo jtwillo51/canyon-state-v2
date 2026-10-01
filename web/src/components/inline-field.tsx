@@ -19,6 +19,7 @@ type Common = {
   save: (value: string) => Promise<SaveResult>;
   canEdit?: boolean;
   readOnlyReason?: string; // shown as a hint when canEdit is false
+  align?: "start" | "end"; // "end" in a right-aligned (numeric) table cell, so the editor opens in its column
 };
 type Props = Common &
   (
@@ -29,7 +30,7 @@ type Props = Common &
   );
 
 export function InlineField(props: Props) {
-  const { label, value, display, save, canEdit = true, readOnlyReason } = props;
+  const { label, value, display, save, canEdit = true, readOnlyReason, align = "start" } = props;
   const id = useId();
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,7 +95,7 @@ export function InlineField(props: Props) {
       <label htmlFor={id} className="text-muted-foreground">
         {label}
       </label>
-      <div className="flex items-start gap-1">
+      <div className={`flex items-start gap-1 ${align === "end" ? "justify-end" : ""}`}>
         <Editor key={opened} id={id} {...props} defaultValue={draft ?? value} invalid={!!error} />
         <Button type="submit" size="icon-sm" aria-label="Save" disabled={pending}>
           <Check className="size-4" aria-hidden />
@@ -130,7 +131,7 @@ function Editor(props: Props & { id: string; defaultValue: string; invalid: bool
         />
       );
     case "number":
-      return <Input {...common} type="number" required min={props.min} step={props.step} className="h-8 w-36" />;
+      return <Input {...common} type="number" required min={props.min} step={props.step} className="h-8 w-28" />;
     case "select":
       return (
         <NativeSelect {...common} size="sm">

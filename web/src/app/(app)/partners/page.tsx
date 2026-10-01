@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { ChooseViewer } from "@/components/choose-viewer";
 import { ViewTabs } from "@/components/list/view-tabs";
@@ -39,6 +40,8 @@ export default async function PartnersPage({ searchParams }: PageProps<"/partner
     p.set("page", String(n));
     return `/partners?${p}`;
   };
+  // A page past the end (an old link, or the list shrank since): show the last page instead of an empty one.
+  if (page > pages) redirect(pageHref(pages));
 
   return (
     <div className="space-y-4">
@@ -52,7 +55,8 @@ export default async function PartnersPage({ searchParams }: PageProps<"/partner
       <PartnerFilters reps={reps.data} />
       <PartnerGrid rows={items} visible={cols} sort={query.sort ?? DEFAULT_SORT} isAdmin={me.data.role === "admin"} />
       <p className="text-xs text-muted-foreground">
-        Close rate is bound ÷ referred, by count: a placeholder until the agency confirms how it measures it.
+        Close rate here is a partner&apos;s: bound ÷ referred, by count. (The dashboard&apos;s: bound ÷ decided, bound
+        or lost, this month.) Both are placeholders until the agency confirms how it measures close rate.
       </p>
 
       {pages > 1 && (

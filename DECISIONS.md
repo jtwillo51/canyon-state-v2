@@ -542,3 +542,28 @@ still open with the agency (FIELD_QUESTIONS #1). These rules are decided for the
   Checked by breaking the code: removing the account limit, letting a bad token fall back to the dev header,
   making sign-out-everywhere a no-op, storing tokens in plain text, dropping the idle timeout, and making links
   reusable each failed their tests.
+
+## Demo polish from a full walkthrough (2026-09-30)
+
+A click-through of every page as an admin and a rep, in dev and a production build, at desktop and phone
+widths. Nothing crashed; these are what a first-time visitor could trip on.
+
+- **First visit offers the people, not a pointer to the dropdown.** With no one chosen, pages showed one line
+  ("Choose a person in View as"). `ChooseViewer` now lists admins and reps as one-click buttons (the same
+  `viewAs` action as the header), each group with a line on what that role sees. Only reachable with
+  DEV_AUTH or DEMO_MODE; otherwise the layout sends people to sign in.
+- **Our own 404.** `app/not-found.tsx` (unknown addresses, with its own header like the sign-in pages) and
+  `app/(app)/not-found.tsx` (a `notFound()` from an app page, inside the shell). Next's default follows the OS
+  color scheme, so in dark mode it was a black box inside the light app.
+- **Admins' "Needs attention" says where stale referrals are.** Nudges go only to credited reps
+  (`app/jobs/stale.py`), so an admin's empty list claimed "No stale referrals" beside a digest counting 38. It
+  now links to the Referrals list's 14-day stale filter.
+- **Close rate's two placeholder definitions are named side by side** in each footnote (partner lists: bound ÷
+  referred; dashboard and digest: bound ÷ decided), so the different numbers don't read as a bug. Relabeling
+  waits for FIELD_QUESTIONS #2.
+- **A page past the end redirects to the last page** (Referrals and Partners), instead of "Page 999 of 7" and
+  "No referrals match these filters".
+- **Smaller fixes:** the pipeline move dialog keeps its content while it fades out (it emptied mid-animation);
+  inline number editors can align to the end of a numeric cell (the dashboard's goal editors spilled left);
+  the Team table doesn't wrap; on phones the scoreboard's three numbers sit side by side and the nav fades at
+  its right edge to show it scrolls.

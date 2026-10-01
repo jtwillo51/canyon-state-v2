@@ -29,7 +29,7 @@ export default async function TeamPage() {
       <AddPerson />
 
       <div className="overflow-x-auto rounded-md border bg-card">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm whitespace-nowrap">
           <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
             <tr>
               <th className="px-3 py-2 font-medium">Name</th>

@@ -72,8 +72,9 @@ export default async function TopPartnersPage({ searchParams }: PageProps<"/top-
         ranked={{ defaultSort: DEFAULT_SORT, empty: `No partner has ${MIN_REFERRALS}+ referrals in this period yet.` }}
       />
       <p className="text-xs text-muted-foreground">
-        {top.data.total} partners qualify. Close rate is bound ÷ referred, by count: a placeholder until the agency
-        confirms how it measures it.
+        {top.data.total} partners qualify. Close rate here is a partner&apos;s: bound ÷ referred, by count. (The
+        dashboard&apos;s: bound ÷ decided, bound or lost, this month.) Both are placeholders until the agency confirms how
+        it measures close rate.
       </p>
     </div>
   );

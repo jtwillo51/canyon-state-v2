@@ -23,7 +23,8 @@ export function AppNav({ isAdmin = false }: { isAdmin?: boolean }) {
   const active = (href: string) => pathname === href || pathname.startsWith(`${href}/`) || (href === "/dashboard" && pathname === "/");
 
   return (
-    <nav aria-label="Main" className="flex overflow-x-auto">
+    // On phones the tabs scroll sideways; the faded right edge shows there are more.
+    <nav aria-label="Main" className="flex overflow-x-auto max-sm:pr-12 max-sm:[mask-image:linear-gradient(to_right,black_80%,transparent)]">
       {items.map(({ href, label, icon: Icon }) => (
         <Link
           key={href}

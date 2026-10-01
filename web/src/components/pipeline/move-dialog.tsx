@@ -3,6 +3,8 @@
 // moves a card forward, the rep who did the work. Browser validation is for convenience; the API
 // checks everything again.
 
+import { useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -23,9 +25,14 @@ type Props = {
 const VERB = { quoted: "Quote", bound: "Bind", contacted: "Mark contacted", referred: "Move to referred", lost: "Mark lost" };
 
 export function MoveDialog({ pending, isAdmin, reps, today, onCancel, onConfirm }: Props) {
-  const r = pending?.referral;
-  const target = pending?.target;
-  const ask = pending ? detailsFor(pending, isAdmin) : null;
+  // Keep the last move on screen while the dialog animates closed: `pending` turns null the moment it's
+  // cancelled or confirmed, and rendering from it alone empties the box mid-fade.
+  const [last, setLast] = useState(pending);
+  if (pending && pending !== last) setLast(pending);
+  const shown = pending ?? last;
+  const r = shown?.referral;
+  const target = shown?.target;
+  const ask = shown ? detailsFor(shown, isAdmin) : null;
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -44,7 +51,7 @@ export function MoveDialog({ pending, isAdmin, reps, today, onCancel, onConfirm 
     <Dialog open={!!pending} onOpenChange={(open) => !open && onCancel()}>
       <DialogContent>
         {r && target && (
-          <form onSubmit={onSubmit} className="grid gap-4">
+          <form key={`${r.id}:${target}`} onSubmit={onSubmit} className="grid gap-4">
             <DialogHeader>
               <DialogTitle>
                 {VERB[target]}: {r.client_name}

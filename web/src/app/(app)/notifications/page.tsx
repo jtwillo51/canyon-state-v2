@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import type { Notification } from "@/lib/api/types";
 import { day } from "@/lib/format";
 import { getNotifications } from "@/lib/notifications-server";
+import { getApi } from "@/lib/viewer";
 
 import { markAllRead, markRead } from "./actions";
 
@@ -28,8 +29,10 @@ function MarkRead({ n }: { n: Notification }) {
 }
 
 export default async function NotificationsPage() {
-  const page = await getNotifications();
-  if (!page) return <ChooseViewer />;
+  const [page, api] = await Promise.all([getNotifications(), getApi()]);
+  if (!page || !api) return <ChooseViewer />;
+  const { data: me } = await api.GET("/users/me");
+  const isAdmin = me?.role === "admin";
   const stale = page.items.filter((n) => n.stale);
   const digests = page.items.filter((n) => n.digest);
 
@@ -55,7 +58,17 @@ export default async function NotificationsPage() {
         <h2 id="attention" className="text-lg font-semibold">
           Needs attention
         </h2>
-        {stale.length === 0 ? (
+        {/* Stale nudges go to the reps credited on a referral (app/jobs/stale.py), never to admins, so an
+            admin's empty list says where to look instead of claiming there's nothing stale. */}
+        {stale.length === 0 && isAdmin ? (
+          <p className="text-sm text-muted-foreground">
+            Stale-referral nudges go to the reps credited on them.{" "}
+            <Link href="/referrals?stale=14&sort=last_touch" className="text-link hover:underline">
+              See every open referral with no touch in 14 days
+            </Link>
+            .
+          </p>
+        ) : stale.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No stale referrals. Anything open with no touch in 14 days will show up here.
           </p>

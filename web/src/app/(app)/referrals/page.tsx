@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { ChooseViewer } from "@/components/choose-viewer";
 import { ReferralFilters } from "@/components/referral/referral-filters";
@@ -40,6 +41,8 @@ export default async function ReferralsPage({ searchParams }: PageProps<"/referr
     p.set("page", String(n));
     return `/referrals?${p}`;
   };
+  // A page past the end (an old link, or the list shrank since): show the last page instead of an empty one.
+  if (page > pages) redirect(pageHref(pages));
 
   return (
     <div className="space-y-4">

@@ -53,7 +53,7 @@ export function DigestCard({ digest, unread, action }: { digest: Digest; unread:
             when this digest was made (open, no touch in 14 days).
           </>
         )}{" "}
-        Close rate is a placeholder definition.
+        Close rate is the share bound of referrals decided in the week (bound or lost), a placeholder definition.
       </p>
       {digest.reps.length > 0 && <DigestRepsTable reps={digest.reps} />}
     </article>

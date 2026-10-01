@@ -76,7 +76,7 @@ const repColumns = repHelper.columns([
     ...RIGHT,
     cell: ({ row: { original: r } }) => (
       <RepCell kind="count" m={r.clients} goalEditor={
-        <InlineField kind="number" label="Goal" value={String(r.clients.goal ?? 0)} min={0} step={1}
+        <InlineField kind="number" label="Goal" align="end" value={String(r.clients.goal ?? 0)} min={0} step={1}
           save={(v) => saveRepGoal(r.rep.id, Number(v), r.sales.goal ?? 0)} />
       } />  // prettier-ignore
     ),
@@ -87,7 +87,7 @@ const repColumns = repHelper.columns([
     ...RIGHT,
     cell: ({ row: { original: r } }) => (
       <RepCell kind="money" m={r.sales} goalEditor={
-        <InlineField kind="number" label="Goal" value={String(r.sales.goal ?? 0)} min={0} step={100}
+        <InlineField kind="number" label="Goal" align="end" value={String(r.sales.goal ?? 0)} min={0} step={100}
           display={(v) => formatValue("money", Number(v))} save={(v) => saveRepGoal(r.rep.id, r.clients.goal ?? 0, Number(v))} />
       } />  // prettier-ignore
     ),
@@ -137,7 +137,7 @@ export function Dashboard({ progress }: { progress: Progress }) {
                 // The company has no "everyone" to compare with: its cards always compare with last month.
                 m={company[x.key]}
                 compare="self"
-                footer={x.key === "close_rate" ? "Company vs last month. Close rate is a placeholder definition." : "Company vs last month"}
+                footer={x.key === "close_rate" ? "Company vs last month. Of referrals decided this month (bound or lost), the share bound; partner lists use bound ÷ referred. A placeholder definition." : "Company vs last month"}
                 goalEditor={
                   x.key === "close_rate" ? (
                     <InlineField kind="number" label="Target" value={company.close_rate.goal == null ? "" : String(Math.round(company.close_rate.goal * 100))}

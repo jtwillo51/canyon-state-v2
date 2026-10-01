@@ -24,10 +24,10 @@ function Item({ label, kind, m, share, fixed }: { label: string; kind: Kind; m: 
   const prefs = useProgressPrefs();
   const compare = fixed ?? prefs.compare; // company totals ignore the switch: they always compare with last month
   return (
-    <div className="min-w-0 border-brand-line px-4 py-2.5 max-md:border-t md:border-l">
+    <div className="min-w-0 border-l border-brand-line px-4 py-2.5 max-md:border-t max-md:px-3 max-md:nth-2:border-l-0">
       <p className="text-[11px] tracking-wider text-brand-mute uppercase">{label}</p>
       <p className="mt-0.5 flex flex-wrap items-baseline gap-x-2 font-mono">
-        <span className="text-xl font-medium">{formatValue(kind, m.value)}</span>
+        <span className="text-lg font-medium md:text-xl">{formatValue(kind, m.value)}</span>
         {m.goal != null && (
           <span className="text-xs text-brand-mute">
             {kind === "rate" ? "target" : "/"} {formatValue(kind, m.goal)}
@@ -63,8 +63,9 @@ export function ProgressStrip({ progress }: { progress: Progress }) {
 
   return (
     <section aria-label="Progress this month" className="relative border-b-3 border-copper bg-brand-deep text-white">
-      <div className="mx-auto grid max-w-app md:grid-cols-[180px_repeat(3,minmax(0,1fr))_auto]">
-        <div className={`flex gap-2 px-4 ${collapsed ? "items-center py-1.5 md:col-span-4" : "flex-col justify-center py-2.5"}`}>
+      {/* Phones: the month on its own row, then the three numbers side by side (not stacked, which filled the screen). */}
+      <div className="mx-auto grid max-w-app grid-cols-3 md:grid-cols-[180px_repeat(3,minmax(0,1fr))_auto]">
+        <div className={`flex gap-2 px-4 max-md:col-span-3 max-md:flex-row max-md:flex-wrap max-md:items-center max-md:justify-start max-md:gap-x-3 max-md:pr-10 ${collapsed ? "items-center py-1.5 md:col-span-4" : "flex-col justify-center py-2.5"}`}>
           <Link href="/dashboard" className="text-[11px] font-medium tracking-wider text-copper-soft uppercase hover:underline">
             {monthName}
           </Link>
