@@ -23,7 +23,6 @@ engineers will read closely. Hold every change to that standard:
 | `api/` | FastAPI + SQLAlchemy 2 (async) + Postgres 17 + Alembic, Python 3.12, managed with **uv** | `api/CLAUDE.md` |
 | `web/` | Next.js 16 (App Router) + React 19 + TypeScript + Tailwind 4 + shadcn/ui | `web/CLAUDE.md` |
 | `DECISIONS.md` | The decision log: what was decided and why. **Read the relevant section before changing a rule.** | |
-| `DEPLOY.md` | The public demo: Neon + Render + Vercel, synthetic data, nightly reseed | |
 
 Also in `.claude/`: **rules** that load when you touch matching files (`rules/access-control.md`,
 `migrations.md`, `ui-design.md`, `e2e-tests.md`), **skills** for repeated workflows (`add-endpoint`,

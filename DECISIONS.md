@@ -567,3 +567,12 @@ widths. Nothing crashed; these are what a first-time visitor could trip on.
   inline number editors can align to the end of a numeric cell (the dashboard's goal editors spilled left);
   the Team table doesn't wrap; on phones the scoreboard's three numbers sit side by side and the nav fades at
   its right edge to show it scrolls.
+
+## Local only, one command to run (2026-10-01)
+
+- **No deployment.** The app runs locally only. Removed DEPLOY.md, render.yaml, the keep-warm and nightly
+  reseed workflows, the production-preview script and its smoke tests (`web/e2e-prod/`), and the Neon setup.
+  DEMO_MODE stays in the code for now.
+- **`npm run dev` at the root starts everything** ([scripts/dev.mjs](scripts/dev.mjs)): create databases,
+  migrate, seed only if there are no users (`seed.py --if-empty`, so edits survive a restart), then the API and
+  web side by side with prefixed output. Plain Node, no new dependency. `npm run reseed` starts the data over.

@@ -6,8 +6,6 @@ financial advisors) send business, how that business closes, and how each rep is
 Next.js on the front, FastAPI and Postgres behind it, Inngest for scheduled work. **All data in this repo is
 synthetic**: fictional people, partners and clients from a deterministic seed.
 
-> **Live demo:** not deployed yet. [DEPLOY.md](DEPLOY.md) has the steps (Neon, Render, Vercel).
-
 ## What it does
 
 - **Pipeline board:** drag referrals through referred → contacted → quoted → bound, or to lost. Each step
@@ -86,7 +84,14 @@ browser ──▶ Next.js (Server Components read, Server Actions write) ──�
 ## Running it locally
 
 Needs Python 3.12 with uv, Node 24 and Postgres 17. Copy [api/.env.example](api/.env.example) to `api/.env`
-and set your database password.
+and set your database password. Then, from the repo root:
+
+```bash
+npm run dev       # creates and migrates the databases, seeds if empty, then API on :8000 and web on :3000
+npm run reseed    # start the data over with fresh synthetic records
+```
+
+[scripts/dev.mjs](scripts/dev.mjs) runs these steps, which also work one at a time:
 
 ```bash
 cd api && uv run python -m scripts.create_databases                      # canyon_dev, canyon_test, canyon_e2e
@@ -114,7 +119,6 @@ push and pull request ([ci.yml](.github/workflows/ci.yml)).
 | [api/](api/) | FastAPI app (`app/`), migrations, tests, scripts (seed, one-time links, jobs) |
 | [web/](web/) | Next.js app, generated API client, Playwright tests |
 | [DECISIONS.md](DECISIONS.md) | The decision log: what was decided and why, by date |
-| [DEPLOY.md](DEPLOY.md) | Deploying the demo on Neon, Render and Vercel |
 | `CLAUDE.md`, `.claude/` | Context, rules, skills and hooks for Claude Code (see below) |
 
 ## Built with Claude Code

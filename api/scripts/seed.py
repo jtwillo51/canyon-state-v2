@@ -5,6 +5,7 @@ Everything comes from one seeded random generator, so every run produces the sam
 (UUIDs included); only the dates move, ending on the day you seed.
 
 Run from api/:  uv run python -m scripts.seed
+With --if-empty it seeds only a database with no users yet, so `npm run dev` can call it on every start.
 Refuses to run unless DATABASE_URL points at this machine, or DEMO_MODE is on (the public demo,
 which only ever holds synthetic data).
 """
@@ -263,6 +264,15 @@ async def main() -> None:
     url = make_url(settings.database_url)
     if url.host not in ("localhost", "127.0.0.1", "::1") and not settings.demo_mode:
         sys.exit(f"Refusing to seed: DATABASE_URL points at {url.host}, not this machine, and DEMO_MODE is off.")
+
+    if "--if-empty" in sys.argv[1:]:
+        async with SessionLocal() as session:
+            # Raw SQL on purpose: the soft-delete hook would hide deleted users, and any row at all means "keep it".
+            has_users = await session.scalar(text("SELECT EXISTS (SELECT 1 FROM users)"))
+        if has_users:
+            await engine.dispose()
+            print(f"{url.database} already has data; not seeding (npm run reseed starts over).")
+            return
 
     rows = build()
     tables = ", ".join(t.name for t in Base.metadata.sorted_tables)

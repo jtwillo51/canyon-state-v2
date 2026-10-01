@@ -1,0 +1,8 @@
+{
+  "name": "canyon-state-v2",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "reseed": "node scripts/dev.mjs --reseed"
+  }
+}

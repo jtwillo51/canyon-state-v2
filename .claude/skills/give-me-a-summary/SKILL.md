@@ -39,7 +39,7 @@ Read each source before writing its section. Skip a bullet only if the thing doe
 2. **Stack**: every layer with its version.
    - API: `api/pyproject.toml` (FastAPI, SQLAlchemy 2 async, asyncpg, Alembic, Pydantic, Inngest, Python, uv).
    - Web: `web/package.json` (Next.js, React, TypeScript, Tailwind, shadcn/ui, TanStack, Playwright).
-   - Database: Postgres version from `.github/workflows/ci.yml` or `DEPLOY.md`.
+   - Database: Postgres version from `.github/workflows/ci.yml`.
 3. **Architecture**: how the pieces talk.
    - The browser never calls the API; Server Components and Server Actions do (`web/CLAUDE.md`).
    - TypeScript client generated from FastAPI's OpenAPI schema; CI fails if it's stale.
@@ -70,9 +70,9 @@ Read each source before writing its section. Skip a bullet only if the thing doe
    - `.claude/rules/*.md`: one bullet each, saying when it loads and what it enforces.
    - `.claude/skills/*`: one bullet each (including this one).
    - `.claude/hooks/*` via `.claude/settings.json`: what each hook blocks or flags.
-9. **Docs**: `DECISIONS.md` (dated decision log; count its sections), `DEPLOY.md`, any README.
-10. **Deployment**: `DEPLOY.md`, `render.yaml`. Hosts for web, API and database; synthetic data only;
-    nightly reseed; anything keeping the demo warm.
+9. **Docs**: `DECISIONS.md` (dated decision log; count its sections), any README.
+10. **Running it**: local only, no deployment. `npm run dev` at the root (`scripts/dev.mjs`): what it
+    prepares and what it starts.
 11. **Placeholders and known gaps**: grep for `PLACEHOLDER`, `TODO`, "open" items in `DECISIONS.md`,
     and checks missing from CI. Each as a plain, short bullet.
 
